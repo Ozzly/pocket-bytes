@@ -265,12 +265,7 @@ int main(int argc, char **argv)
             }
     
     
-            // Jump 
-            if (p->jump_buffer > 0 && p->coyote_frames > 0) {
-                p->vel_y = JUMP_STRENGTH;
-                p->coyote_frames = 0;
-                p->jump_buffer = 0;
-            }
+            
     
     
             if (p->y > 192) {
@@ -305,6 +300,17 @@ int main(int argc, char **argv)
     
         // Player to player collision
         resolvePlayerCollision(players, PLAYER_COUNT);
+
+
+        // Check jump after all collision is resolved
+        for (int i=0; i < PLAYER_COUNT; i++) {
+            Player *p = &players[i];
+            if (p->jump_buffer > 0 && p->coyote_frames > 0) {
+                p->vel_y = JUMP_STRENGTH;
+                p->coyote_frames = 0;
+                p->jump_buffer = 0;
+            }
+        }
 
         // Player clamping to camera bounds
         for (int i=0; i < 2; i++) {

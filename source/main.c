@@ -224,20 +224,12 @@ printf("spike val: %d\n", NF_GetPoint(0, 4, 166));
             }
     
     
-            // Camera moves with player if space
-            // camera_x = (int)p->x - 128;
-            // if (camera_x<0) camera_x = 0;
-            // if (camera_x> LEVEL_WIDTH - 256) camera_x = LEVEL_WIDTH -256;
-    
-    
             // Jump 
             if (p->jump_buffer > 0 && p->coyote_frames > 0) {
                 p->vel_y = JUMP_STRENGTH;
                 p->coyote_frames = 0;
                 p->jump_buffer = 0;
             }
-    
-            NF_ScrollBg(0, 3, camera_x, 0);
     
     
             if (p->y > 192) {
@@ -268,16 +260,34 @@ printf("spike val: %d\n", NF_GetPoint(0, 4, 166));
                 NF_HflipSprite(0, p->sprite_id, true);
                 NF_SpriteFrame(0, p->sprite_id, 1);
             }
+        }
     
-    
-            NF_MoveSprite(0, p->sprite_id, (s16)(p->x - camera_x) - 4, (s16)p->y - 4);
+        // Player clamping to camera bounds
+        for (int i=0; i < 2; i++) {
+            Player *p = &players[i];
+            if (p->x < camera_x) {
+                p->x = (float)camera_x;
+                p->vel_x = 0;
+            }
+            if (p->x + PLAYER_WIDTH > camera_x + 256) {
+                p->x = (float)(camera_x + 256 - PLAYER_WIDTH);
+                p->vel_x = 0;
+            }
         }
 
-
-        camera_x = (int)((players[0].x + players[1].x) / 2) - 128;
-        if (camera_x < 0) camera_x = 0;
-        if (camera_x > LEVEL_WIDTH - 256) camera_x = LEVEL_WIDTH - 256;
+        // Camera follows the lead player, but is clamped to level bounds
+        float lead_x = players[0].x > players[1].x ? players[0].x : players[1].x;
+        int desired = (int)lead_x - 192;
+        if (desired < 0) desired = 0;
+        if (desired > LEVEL_WIDTH - 256) desired = LEVEL_WIDTH - 256;
+        camera_x = desired; 
         NF_ScrollBg(0, 3, camera_x, 0);
+
+        // Update player position on screen based on camera
+        for (int i =0; i < 2; i++) {
+            Player *p = &players[i];
+            NF_MoveSprite(0, p->sprite_id, (s16)(p->x - camera_x) - 4, (s16)p->y - 4);
+        }
 
         // Copy data from NFLib OAM buffers to the real OAM, wait for VBlank
         NF_SpriteOamSet(0);

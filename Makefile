@@ -236,12 +236,12 @@ $(BUILDDIR)/%.arm.c.o : %.arm.c
 	@$(MKDIR) -p $(@D)
 	$(V)$(CC) $(CFLAGS) -MMD -MP -marm -mlong-calls -c -o $@ $<
 
-$(BUILDDIR)/%.cpp.o : %.cpp
+$(BUILDDIR)/%.cpp->o : %.cpp
 	@echo "  CXX     $<"
 	@$(MKDIR) -p $(@D)
 	$(V)$(CXX) $(CXXFLAGS) -MMD -MP -c -o $@ $<
 
-$(BUILDDIR)/%.arm.cpp.o : %.arm.cpp
+$(BUILDDIR)/%.arm.cpp->o : %.arm.cpp
 	@echo "  CXX     $<"
 	@$(MKDIR) -p $(@D)
 	$(V)$(CXX) $(CXXFLAGS) -MMD -MP -marm -mlong-calls -c -o $@ $<

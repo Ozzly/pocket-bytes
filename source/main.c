@@ -29,9 +29,12 @@ typedef struct {
     bool on_ground;
     int coyote_frames;
     int jump_buffer;
+    int sprite_id;
+    int palette_id;
     u8 sprite_frame;
     u8 sprite_frame_debounce;
-    int sprite_id;
+    u16 key_left, key_right, key_jump;
+
 } Player;
 
 bool isSolid(int x, int y) {
@@ -90,20 +93,38 @@ int main(int argc, char **argv)
 
     // Create sprite instance
     NF_CreateSprite(0, 0, 0, 3, 120, 80);
+    NF_CreateSprite(0, 1, 0, 1, 160, 80);
 
     // Set background color
     BG_PALETTE[0] = RGB15(31, 31, 31);
 
-    Player p = {
+    Player players[2] =
+    {
+    {
         .x = 120.0f, .y = 88.0f,
         .vel_x = 0.0f, .vel_y = 0.0f,
         .on_ground = false,
         .coyote_frames = 0,
         .jump_buffer = 0,
         .sprite_id = 0,
+        .palette_id = 3,
         .sprite_frame = 0,
         .sprite_frame_debounce = 0,
-    };
+        .key_left = KEY_LEFT, .key_right = KEY_RIGHT, .key_jump = KEY_UP,
+    },
+    {
+        .x = 160.0f, .y = 88.0f,
+        .vel_x = 0.0f, .vel_y = 0.0f,
+        .on_ground = false,
+        .coyote_frames = 0,
+        .jump_buffer = 0,
+        .sprite_id = 1,
+        .palette_id = 1,
+        .sprite_frame = 0,
+        .sprite_frame_debounce = 0,
+        .key_left = KEY_Y, .key_right = KEY_A, .key_jump = KEY_X,
+    }
+};
 
     int camera_x = 0;
 
@@ -125,136 +146,138 @@ printf("spike val: %d\n", NF_GetPoint(0, 4, 166));
         u16 keys = keysHeld();
         u16 keys_down = keysDown();
 
-        // Horizontal movement & friction
-        if (keys & KEY_RIGHT) {
-            
-            p.vel_x += WALK_ACCELERATION;
-
-            
-        } else if (keys & KEY_LEFT) {
-if (p.vel_x == 0) { 
-                NF_HflipSprite(0, 0, true);
-                NF_SpriteFrame(0, 0, 1);
+        for (int i = 0; i < 2; i++) {
+            Player *p = &players[i];
+            // Horizontal movement & friction
+            if (keys & p->key_right) {
+                p->vel_x += WALK_ACCELERATION;
+    
                 
+            } else if (keys & p->key_left) {
+                p->vel_x -= WALK_ACCELERATION;
+                
+            } else {
+                p->vel_x *= 1 - (p->on_ground ? GROUND_FRICTION : AIR_FRICTION);
             }
-            p.vel_x -= WALK_ACCELERATION;
+    
+            if (p->vel_x > MAX_WALK) p->vel_x = MAX_WALK;
+            if (p->vel_x < -MAX_WALK) p->vel_x = -MAX_WALK;
+    
+            if (p->vel_x > 0) NF_HflipSprite(0, p->sprite_id, false);
+            else if (p->vel_x < 0) NF_HflipSprite(0, p->sprite_id, true);
+    
+            // Coyote frames to let player jump after leaving platform
+            if (p->on_ground) {
+                p->coyote_frames = COYOTE_TIME;
+            } else if (p->coyote_frames > 0) {
+                p->coyote_frames--;
+            }
+    
+            if (keys_down & p->key_jump) p->jump_buffer = JUMP_BUFFER_TIME;
+            if (p->jump_buffer > 0) p->jump_buffer--;
+    
+            // Gravity
+            if (!p->on_ground) p->vel_y += GRAVITY;
+            if (p->vel_y > MAX_FALL) p->vel_y = MAX_FALL;
+    
             
-        } else {
-            p.vel_x *= 1 - (p.on_ground ? GROUND_FRICTION : AIR_FRICTION);
-        }
-
-        if (p.vel_x > MAX_WALK) p.vel_x = MAX_WALK;
-        if (p.vel_x < -MAX_WALK) p.vel_x = -MAX_WALK;
-
-        if (p.vel_x > 0) NF_HflipSprite(0, 0, false);
-        else if (p.vel_x < 0) NF_HflipSprite(0, 0, true);
-
-        // Coyote frames to let player jump after leaving platform
-        if (p.on_ground) {
-            p.coyote_frames = COYOTE_TIME;
-        } else if (p.coyote_frames > 0) {
-            p.coyote_frames--;
-        }
-
-        if (keys_down & KEY_A) p.jump_buffer = JUMP_BUFFER_TIME;
-        if (p.jump_buffer > 0) p.jump_buffer--;
-
-        // Gravity
-        if (!p.on_ground) p.vel_y += GRAVITY;
-        if (p.vel_y > MAX_FALL) p.vel_y = MAX_FALL;
-
-        
-
-
-        // Horizontal Collision
-        p.x += p.vel_x;
-        int int_player_x = (int)p.x, int_player_y = (int)p.y;
-
-        if (p.vel_x > 0) { // Check right edge
-            if (isSolid(int_player_x + PLAYER_WIDTH, int_player_y + 2) || isSolid(int_player_x + PLAYER_WIDTH, int_player_y + PLAYER_HEIGHT- 2)) { 
-                p.x = (float)(((int_player_x + PLAYER_WIDTH) / TILE) * TILE - PLAYER_WIDTH) - 0.01f;
-                p.vel_x = 0;
-            }
-        }
-        if (p.vel_x < 0) { // Check left edge
-            if (isSolid(int_player_x, int_player_y + 2) || isSolid(int_player_x, int_player_y + PLAYER_HEIGHT -2)) {
-                if (int_player_x < 0) { // Fix character going past screen border, then teleporting to positive tile 1
-                    p.x = 0;    
-                } else {
-                    p.x = (float)((int_player_x / TILE + 1) * TILE);
+    
+    
+            // Horizontal Collision
+            p->x += p->vel_x;
+            int int_player_x = (int)p->x, int_player_y = (int)p->y;
+    
+            if (p->vel_x > 0) { // Check right edge
+                if (isSolid(int_player_x + PLAYER_WIDTH, int_player_y + 2) || isSolid(int_player_x + PLAYER_WIDTH, int_player_y + PLAYER_HEIGHT- 2)) { 
+                    p->x = (float)(((int_player_x + PLAYER_WIDTH) / TILE) * TILE - PLAYER_WIDTH) - 0.01f;
+                    p->vel_x = 0;
                 }
-                p.vel_x = 0;
             }
-        }
-
-        // Vertical Movement
-        p.y += p.vel_y;
-        int_player_x = (int)p.x, int_player_y = (int)p.y;
-        p.on_ground = false;
-
-        if (p.vel_y >= 0) { // falling or standing still, check feet
-            if (isSolid(int_player_x + 2, int_player_y + PLAYER_HEIGHT) || isSolid(int_player_x + PLAYER_WIDTH -2, int_player_y + PLAYER_HEIGHT) || isSolid(int_player_x + PLAYER_WIDTH / 2, int_player_y + PLAYER_HEIGHT)) {
-                p.y = (float)(((int_player_y + PLAYER_HEIGHT) / TILE) * TILE - PLAYER_HEIGHT);
-                p.vel_y = 0;
-                p.on_ground = true;
+            if (p->vel_x < 0) { // Check left edge
+                if (isSolid(int_player_x, int_player_y + 2) || isSolid(int_player_x, int_player_y + PLAYER_HEIGHT -2)) {
+                    if (int_player_x < 0) { // Fix character going past screen border, then teleporting to positive tile 1
+                        p->x = 0;    
+                    } else {
+                        p->x = (float)((int_player_x / TILE + 1) * TILE);
+                    }
+                    p->vel_x = 0;
+                }
             }
-        }
-        if (p.vel_y < 0) { // rising, check head
-            if (isSolid(int_player_x + 2, int_player_y) || isSolid(int_player_x + PLAYER_WIDTH -2, int_player_y)) {
-                p.y = (float)((int_player_y / TILE + 1) * TILE);
-                p.vel_y = 0;
+    
+            // Vertical Movement
+            p->y += p->vel_y;
+            int_player_x = (int)p->x, int_player_y = (int)p->y;
+            p->on_ground = false;
+    
+            if (p->vel_y >= 0) { // falling or standing still, check feet
+                if (isSolid(int_player_x + 2, int_player_y + PLAYER_HEIGHT) || isSolid(int_player_x + PLAYER_WIDTH -2, int_player_y + PLAYER_HEIGHT) || isSolid(int_player_x + PLAYER_WIDTH / 2, int_player_y + PLAYER_HEIGHT)) {
+                    p->y = (float)(((int_player_y + PLAYER_HEIGHT) / TILE) * TILE - PLAYER_HEIGHT);
+                    p->vel_y = 0;
+                    p->on_ground = true;
+                }
             }
+            if (p->vel_y < 0) { // rising, check head
+                if (isSolid(int_player_x + 2, int_player_y) || isSolid(int_player_x + PLAYER_WIDTH -2, int_player_y)) {
+                    p->y = (float)((int_player_y / TILE + 1) * TILE);
+                    p->vel_y = 0;
+                }
+            }
+    
+    
+            // Camera moves with player if space
+            // camera_x = (int)p->x - 128;
+            // if (camera_x<0) camera_x = 0;
+            // if (camera_x> LEVEL_WIDTH - 256) camera_x = LEVEL_WIDTH -256;
+    
+    
+            // Jump 
+            if (p->jump_buffer > 0 && p->coyote_frames > 0) {
+                p->vel_y = JUMP_STRENGTH;
+                p->coyote_frames = 0;
+                p->jump_buffer = 0;
+            }
+    
+            NF_ScrollBg(0, 3, camera_x, 0);
+    
+    
+            if (p->y > 192) {
+                p->y = -PLAYER_HEIGHT;
+                p->on_ground = false;
+                p->coyote_frames = 0;
+            }
+    
+            bool is_moving = p->vel_x > 0.05f || p->vel_x < -0.05f;
+    
+    
+            p->sprite_frame_debounce++;
+            if (is_moving && p->sprite_frame_debounce > 5) {
+                p->sprite_frame++;
+                p->sprite_frame_debounce = 0;
+                if (p->sprite_frame > 5) p->sprite_frame = 2;
+                NF_SpriteFrame(0, p->sprite_id, p->sprite_frame);
+            } else if (!is_moving) {
+                p->sprite_frame = 0;
+                p->sprite_frame_debounce = 0;
+                NF_SpriteFrame(0, p->sprite_id, 0);
+            } 
+    
+            if (!is_moving && (keysHeld() & p->key_right)) {
+                NF_HflipSprite(0, p->sprite_id, false);
+                NF_SpriteFrame(0, p->sprite_id, 1);
+            } else if (!is_moving && (keysHeld() & p->key_left)) {
+                NF_HflipSprite(0, p->sprite_id, true);
+                NF_SpriteFrame(0, p->sprite_id, 1);
+            }
+    
+    
+            NF_MoveSprite(0, p->sprite_id, (s16)(p->x - camera_x) - 4, (s16)p->y - 4);
         }
 
 
-        // Camera moves with player if space
-        camera_x = (int)p.x - 128;
-        if (camera_x<0) camera_x = 0;
-        if (camera_x> LEVEL_WIDTH - 256) camera_x = LEVEL_WIDTH -256;
-
-
-        // Jump 
-        if (p.jump_buffer > 0 && p.coyote_frames > 0) {
-            p.vel_y = JUMP_STRENGTH;
-            p.coyote_frames = 0;
-            p.jump_buffer = 0;
-        }
-
+        camera_x = (int)((players[0].x + players[1].x) / 2) - 128;
+        if (camera_x < 0) camera_x = 0;
+        if (camera_x > LEVEL_WIDTH - 256) camera_x = LEVEL_WIDTH - 256;
         NF_ScrollBg(0, 3, camera_x, 0);
-
-
-        if (p.y > 192) {
-            p.y = -PLAYER_HEIGHT;
-            p.on_ground = false;
-            p.coyote_frames = 0;
-        }
-
-        bool is_moving = p.vel_x > 0.05f || p.vel_x < -0.05f;
-
-
-        p.sprite_frame_debounce++;
-        if (is_moving && p.sprite_frame_debounce > 5) {
-            p.sprite_frame++;
-            p.sprite_frame_debounce = 0;
-            if (p.sprite_frame > 5) p.sprite_frame = 2;
-            NF_SpriteFrame(0, 0, p.sprite_frame);
-        } else if (!is_moving) {
-            p.sprite_frame = 0;
-            p.sprite_frame_debounce = 0;
-            NF_SpriteFrame(0, 0, 0);
-        } 
-
-        if (!is_moving && (keysHeld() & (KEY_RIGHT))) {
-            NF_HflipSprite(0, 0, false);
-            NF_SpriteFrame(0, 0, 1);
-        } else if (!is_moving && (keysHeld() & (KEY_LEFT))) {
-            NF_HflipSprite(0, 0, true);
-            NF_SpriteFrame(0, 0, 1);
-        }
-
-
-        NF_MoveSprite(0, 0, (s16)(p.x - camera_x) - 4, (s16)p.y - 4);
-
 
         // Copy data from NFLib OAM buffers to the real OAM, wait for VBlank
         NF_SpriteOamSet(0);

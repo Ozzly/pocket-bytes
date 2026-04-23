@@ -175,15 +175,9 @@ int main(int argc, char **argv)
     int camera_x = 0;
 
     consoleDemoInit();
-printf("spike val: %d\n", NF_GetPoint(0, 4, 178));
-printf("spike val: %d\n", NF_GetPoint(0, 4, 180));
-printf("spike val: %d\n", NF_GetPoint(0, 4, 182));
-printf("spike val: %d\n", NF_GetPoint(0, 4, 184));
-printf("spike val: %d\n", NF_GetPoint(0, 4, 186));
-printf("spike val: %d\n", NF_GetPoint(0, 4, 188));
-printf("spike val: %d\n", NF_GetPoint(0, 4, 174));
-printf("spike val: %d\n", NF_GetPoint(0, 4, 170));
-printf("spike val: %d\n", NF_GetPoint(0, 4, 166));
+    printf("spike val: %d\n", NF_GetPoint(0, 4, 174));
+    printf("spike val: %d\n", NF_GetPoint(0, 4, 170));
+    printf("spike val: %d\n", NF_GetPoint(0, 4, 166));
 
     while (1)
     {

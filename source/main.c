@@ -1,0 +1,272 @@
+#include <stdio.h>
+#include <nds.h>
+#include <nf_lib.h>
+#include <filesystem.h>
+
+#define GRAVITY 0.35f
+#define MAX_FALL 6.0f
+#define WALK_ACCELERATION 0.5f
+#define MAX_WALK 1.5f
+#define GROUND_FRICTION 0.8f // 1 is max friction
+#define AIR_FRICTION 0.7f
+#define JUMP_STRENGTH -4.7f
+#define COYOTE_TIME 4
+#define JUMP_BUFFER_TIME 3
+
+#define PLAYER_WIDTH 22
+#define PLAYER_HEIGHT 23
+#define TILE 8
+
+#define LEVEL_WIDTH 1024
+
+#define COL_SOLID 0
+#define COL_EMPTY 2
+#define COL_SPIKE 3
+
+typedef struct {
+    float x, y;
+    float vel_x, vel_y;
+    bool on_ground;
+    int coyote_frames;
+    int jump_buffer;
+    u8 sprite_frame;
+    u8 sprite_frame_debounce;
+    int sprite_id;
+} Player;
+
+bool isSolid(int x, int y) {
+    if (y >= 192 || y < 0) return false;
+    if (x < 0 || x >= LEVEL_WIDTH) return true;
+    return NF_GetPoint(0, x, y) == COL_SOLID;
+}
+
+int main(int argc, char **argv)
+{
+    // Screen for NitroFS init
+    NF_Set2D(0, 0);
+    NF_Set2D(1, 0);
+    consoleDemoInit();
+    printf("Initializing NitroFS... ");
+    swiWaitForVBlank();
+
+    // NitroFS init
+    nitroFSInit(NULL);
+    NF_SetRootFolder("NITROFS");
+
+    // NitroFS is ready
+    // Init 2D mode on both screens
+    NF_Set2D(0, 0);
+    NF_Set2D(1, 0);
+
+    // Init tiled bg
+    NF_InitTiledBgBuffers();
+    NF_InitTiledBgSys(0);
+    NF_InitTiledBgSys(1);
+    // Load level1
+    NF_LoadTiledBg("bg/level1", "level1", LEVEL_WIDTH, 256);
+    NF_CreateTiledBg(0, 3, "level1");
+
+    // Init + Load collision map 
+    NF_InitCmapBuffers();
+    NF_LoadCollisionBg("collision/level1_col", 0, LEVEL_WIDTH, 256);
+
+
+    // Init sprites
+    NF_InitSpriteBuffers();
+    NF_InitSpriteSys(0);
+    NF_InitSpriteSys(1);
+    // Load sprite files from NitroFS
+    NF_LoadSpriteGfx("sprite/byte", 0, 32, 32);
+    NF_VramSpriteGfx(0, 0, 0, false);
+    
+    NF_LoadSpritePal("sprite/byte", 0);
+    NF_LoadSpritePal("sprite/byte-mauve", 1);
+    NF_LoadSpritePal("sprite/byte-saphire", 2);
+    NF_LoadSpritePal("sprite/byte-bone", 3);
+    NF_VramSpritePal(0, 0, 0); // green
+    NF_VramSpritePal(0, 1, 1); // mauve
+    NF_VramSpritePal(0, 2, 2); //saphire
+    NF_VramSpritePal(0, 3, 3); // bone
+
+    // Create sprite instance
+    NF_CreateSprite(0, 0, 0, 3, 120, 80);
+
+    // Set background color
+    BG_PALETTE[0] = RGB15(31, 31, 31);
+
+    Player p = {
+        .x = 120.0f, .y = 88.0f,
+        .vel_x = 0.0f, .vel_y = 0.0f,
+        .on_ground = false,
+        .coyote_frames = 0,
+        .jump_buffer = 0,
+        .sprite_id = 0,
+        .sprite_frame = 0,
+        .sprite_frame_debounce = 0,
+    };
+
+    int camera_x = 0;
+
+    consoleDemoInit();
+printf("spike val: %d\n", NF_GetPoint(0, 4, 178));
+printf("spike val: %d\n", NF_GetPoint(0, 4, 180));
+printf("spike val: %d\n", NF_GetPoint(0, 4, 182));
+printf("spike val: %d\n", NF_GetPoint(0, 4, 184));
+printf("spike val: %d\n", NF_GetPoint(0, 4, 186));
+printf("spike val: %d\n", NF_GetPoint(0, 4, 188));
+printf("spike val: %d\n", NF_GetPoint(0, 4, 174));
+printf("spike val: %d\n", NF_GetPoint(0, 4, 170));
+printf("spike val: %d\n", NF_GetPoint(0, 4, 166));
+
+    while (1)
+    {
+        // Read keypad
+        scanKeys();
+        u16 keys = keysHeld();
+        u16 keys_down = keysDown();
+
+        // Horizontal movement & friction
+        if (keys & KEY_RIGHT) {
+            
+            p.vel_x += WALK_ACCELERATION;
+
+            
+        } else if (keys & KEY_LEFT) {
+if (p.vel_x == 0) { 
+                NF_HflipSprite(0, 0, true);
+                NF_SpriteFrame(0, 0, 1);
+                
+            }
+            p.vel_x -= WALK_ACCELERATION;
+            
+        } else {
+            p.vel_x *= 1 - (p.on_ground ? GROUND_FRICTION : AIR_FRICTION);
+        }
+
+        if (p.vel_x > MAX_WALK) p.vel_x = MAX_WALK;
+        if (p.vel_x < -MAX_WALK) p.vel_x = -MAX_WALK;
+
+        if (p.vel_x > 0) NF_HflipSprite(0, 0, false);
+        else if (p.vel_x < 0) NF_HflipSprite(0, 0, true);
+
+        // Coyote frames to let player jump after leaving platform
+        if (p.on_ground) {
+            p.coyote_frames = COYOTE_TIME;
+        } else if (p.coyote_frames > 0) {
+            p.coyote_frames--;
+        }
+
+        if (keys_down & KEY_A) p.jump_buffer = JUMP_BUFFER_TIME;
+        if (p.jump_buffer > 0) p.jump_buffer--;
+
+        // Gravity
+        if (!p.on_ground) p.vel_y += GRAVITY;
+        if (p.vel_y > MAX_FALL) p.vel_y = MAX_FALL;
+
+        
+
+
+        // Horizontal Collision
+        p.x += p.vel_x;
+        int int_player_x = (int)p.x, int_player_y = (int)p.y;
+
+        if (p.vel_x > 0) { // Check right edge
+            if (isSolid(int_player_x + PLAYER_WIDTH, int_player_y + 2) || isSolid(int_player_x + PLAYER_WIDTH, int_player_y + PLAYER_HEIGHT- 2)) { 
+                p.x = (float)(((int_player_x + PLAYER_WIDTH) / TILE) * TILE - PLAYER_WIDTH) - 0.01f;
+                p.vel_x = 0;
+            }
+        }
+        if (p.vel_x < 0) { // Check left edge
+            if (isSolid(int_player_x, int_player_y + 2) || isSolid(int_player_x, int_player_y + PLAYER_HEIGHT -2)) {
+                if (int_player_x < 0) { // Fix character going past screen border, then teleporting to positive tile 1
+                    p.x = 0;    
+                } else {
+                    p.x = (float)((int_player_x / TILE + 1) * TILE);
+                }
+                p.vel_x = 0;
+            }
+        }
+
+        // Vertical Movement
+        p.y += p.vel_y;
+        int_player_x = (int)p.x, int_player_y = (int)p.y;
+        p.on_ground = false;
+
+        if (p.vel_y >= 0) { // falling or standing still, check feet
+            if (isSolid(int_player_x + 2, int_player_y + PLAYER_HEIGHT) || isSolid(int_player_x + PLAYER_WIDTH -2, int_player_y + PLAYER_HEIGHT) || isSolid(int_player_x + PLAYER_WIDTH / 2, int_player_y + PLAYER_HEIGHT)) {
+                p.y = (float)(((int_player_y + PLAYER_HEIGHT) / TILE) * TILE - PLAYER_HEIGHT);
+                p.vel_y = 0;
+                p.on_ground = true;
+            }
+        }
+        if (p.vel_y < 0) { // rising, check head
+            if (isSolid(int_player_x + 2, int_player_y) || isSolid(int_player_x + PLAYER_WIDTH -2, int_player_y)) {
+                p.y = (float)((int_player_y / TILE + 1) * TILE);
+                p.vel_y = 0;
+            }
+        }
+
+
+        // Camera moves with player if space
+        camera_x = (int)p.x - 128;
+        if (camera_x<0) camera_x = 0;
+        if (camera_x> LEVEL_WIDTH - 256) camera_x = LEVEL_WIDTH -256;
+
+
+        // Jump 
+        if (p.jump_buffer > 0 && p.coyote_frames > 0) {
+            p.vel_y = JUMP_STRENGTH;
+            p.coyote_frames = 0;
+            p.jump_buffer = 0;
+        }
+
+        NF_ScrollBg(0, 3, camera_x, 0);
+
+
+        if (p.y > 192) {
+            p.y = -PLAYER_HEIGHT;
+            p.on_ground = false;
+            p.coyote_frames = 0;
+        }
+
+        bool is_moving = p.vel_x > 0.05f || p.vel_x < -0.05f;
+
+
+        p.sprite_frame_debounce++;
+        if (is_moving && p.sprite_frame_debounce > 5) {
+            p.sprite_frame++;
+            p.sprite_frame_debounce = 0;
+            if (p.sprite_frame > 5) p.sprite_frame = 2;
+            NF_SpriteFrame(0, 0, p.sprite_frame);
+        } else if (!is_moving) {
+            p.sprite_frame = 0;
+            p.sprite_frame_debounce = 0;
+            NF_SpriteFrame(0, 0, 0);
+        } 
+
+        if (!is_moving && (keysHeld() & (KEY_RIGHT))) {
+            NF_HflipSprite(0, 0, false);
+            NF_SpriteFrame(0, 0, 1);
+        } else if (!is_moving && (keysHeld() & (KEY_LEFT))) {
+            NF_HflipSprite(0, 0, true);
+            NF_SpriteFrame(0, 0, 1);
+        }
+
+
+        NF_MoveSprite(0, 0, (s16)(p.x - camera_x) - 4, (s16)p.y - 4);
+
+
+        // Copy data from NFLib OAM buffers to the real OAM, wait for VBlank
+        NF_SpriteOamSet(0);
+        NF_SpriteOamSet(1);
+        // Wait for the screen refresh
+        swiWaitForVBlank();
+        // Actually update the OAM
+        oamUpdate(&oamMain);
+        oamUpdate(&oamSub);
+    }
+
+    // If this is reached, the program will return to the loader if the loader
+    // supports it.
+    return 0;
+}

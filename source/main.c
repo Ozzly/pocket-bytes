@@ -23,6 +23,8 @@
 #define COL_EMPTY 2
 #define COL_SPIKE 3
 
+#define PLAYER_COUNT 2
+
 typedef struct {
     float x, y;
     float vel_x, vel_y;
@@ -34,8 +36,53 @@ typedef struct {
     u8 sprite_frame;
     u8 sprite_frame_debounce;
     u16 key_left, key_right, key_jump;
-
 } Player;
+
+void resolvePlayerCollision(Player *players, int count) {
+    for (int i = 0; i < count; i++) {
+        for (int j = i + 1; j < count; j++) {
+            Player *a = &players[i];
+            Player *b = &players[j];
+
+            int a_left = (int)a->x, a_top = (int)a->y;
+            int a_right = (int)a->x + PLAYER_WIDTH, a_bottom = (int)a->y + PLAYER_HEIGHT;
+            int b_left = (int)b->x, b_top = (int)b->y;
+            int b_right = (int)b->x + PLAYER_WIDTH, b_bottom = (int)b->y + PLAYER_HEIGHT;
+
+            if (a_right <= b_left || b_right <= a_left) continue; // No horizontal overlap
+            if (a_bottom <= b_top || b_bottom <= a_top) continue; // No vertical overlap
+
+            int penetration_x = a_left < b_left 
+            ? a_right - b_left // a is left of b so penetration is how much a's right edge overlaps b's left edge
+            : -(b_right - a_left); // negative - push a right, b left
+            int penetration_y = a_top < b_top // true if a is above b (as coords increase downwards) 
+            ? a_bottom - b_top // a is above b so penetration is how much a's bottom edge overlaps b's top edge
+            : -(b_bottom - a_top);
+
+            if (abs(penetration_x) <= abs(penetration_y)) { // Smallest distance between 2 players sides is horizontal
+                a->x -= penetration_x / 2.0f;
+                b->x += penetration_x / 2.0f;
+                a->vel_x = 0;
+                b->vel_x = 0;
+
+            } else { // Smallest distance between 2 players is foot to head
+                if (penetration_y > 0) { // a is inside b, so move a up
+                    a->y = (float)(b_top - PLAYER_HEIGHT);
+                    a->vel_y = 0;
+                    a->on_ground = true;
+                } else { // b is inside a, so move b up
+                    b->y = (float)(a_top - PLAYER_HEIGHT);
+                    b->vel_y = 0;
+                    b->on_ground = true;
+
+                }
+
+            }
+        }
+    }
+}
+
+
 
 bool isSolid(int x, int y) {
     if (y >= 192 || y < 0) return false;
@@ -98,8 +145,7 @@ int main(int argc, char **argv)
     // Set background color
     BG_PALETTE[0] = RGB15(31, 31, 31);
 
-    Player players[2] =
-    {
+    Player players[PLAYER_COUNT] = {
     {
         .x = 120.0f, .y = 88.0f,
         .vel_x = 0.0f, .vel_y = 0.0f,
@@ -146,6 +192,7 @@ printf("spike val: %d\n", NF_GetPoint(0, 4, 166));
         u16 keys = keysHeld();
         u16 keys_down = keysDown();
 
+        // Player movement, collision (map), and sprite animation
         for (int i = 0; i < 2; i++) {
             Player *p = &players[i];
             // Horizontal movement & friction
@@ -262,6 +309,9 @@ printf("spike val: %d\n", NF_GetPoint(0, 4, 166));
             }
         }
     
+        // Player to player collision
+        resolvePlayerCollision(players, PLAYER_COUNT);
+
         // Player clamping to camera bounds
         for (int i=0; i < 2; i++) {
             Player *p = &players[i];

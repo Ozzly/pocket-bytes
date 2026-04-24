@@ -198,10 +198,24 @@ void resolvePlayerPlayerCollision(Player *players, int count) {
             : -(b_bottom - a_top);
 
             if (fabsf(penetration_x) <= fabsf(penetration_y)) { // Smallest distance between 2 players sides is horizontal
-                a->x -= penetration_x / 2.0f;
-                b->x += penetration_x / 2.0f;
-                a->vel_x = 0;
-                b->vel_x = 0;
+                if (penetration_x > 0) { // a is left of b
+                    if (a->vel_x > 0) { // a is moving right into b, so push back a
+                        a->x -= penetration_x;
+                        a->vel_x = 0;
+                    } else { // b walked left into a 
+                        b->x += penetration_x;
+                        b->vel_x = 0;    
+                    }
+                } else { // b is left of a
+                    if (b->vel_x > 0) { // b walked right into a
+                        b->x -= (-penetration_x); // penetration_x is negative, so cancel out the negative to move b left
+                        b->vel_x = 0;
+
+                    } else { // a walked left into b
+                        a->x +=  (-penetration_x);
+                        a->vel_x = 0;
+                    }
+                }
 
             } else { // Smallest distance between 2 players is foot to head
                 if (penetration_y > 0) { // a is inside b, so move a up

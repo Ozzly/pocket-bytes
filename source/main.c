@@ -41,51 +41,6 @@ typedef struct {
     bool has_player_on_top;
 } Player;
 
-void resolvePlayerPlayerCollision(Player *players, int count) {
-    for (int i = 0; i < count; i++) {
-        for (int j = i + 1; j < count; j++) {
-            Player *a = &players[i];
-            Player *b = &players[j];
-
-            float a_left = a->x, a_top = a->y;
-            float a_right = a->x + PLAYER_WIDTH, a_bottom = a->y + PLAYER_HEIGHT;
-            float b_left = b->x, b_top = b->y;
-            float b_right = b->x + PLAYER_WIDTH, b_bottom = b->y + PLAYER_HEIGHT;
-
-            if (a_right <= b_left || b_right <= a_left) continue; // No horizontal overlap
-            if (a_bottom <= b_top || b_bottom <= a_top) continue; // No vertical overlap
-
-            float penetration_x = a_left < b_left 
-            ? a_right - b_left // a is left of b so penetration is how much a's right edge overlaps b's left edge
-            : -(b_right - a_left); // negative - push a right, b left
-            float penetration_y = a_top < b_top // true if a is above b (as coords increase downwards) 
-            ? a_bottom - b_top // a is above b so penetration is how much a's bottom edge overlaps b's top edge
-            : -(b_bottom - a_top);
-
-            if (fabsf(penetration_x) <= fabsf(penetration_y)) { // Smallest distance between 2 players sides is horizontal
-                a->x -= penetration_x / 2.0f;
-                b->x += penetration_x / 2.0f;
-                a->vel_x = 0;
-                b->vel_x = 0;
-
-            } else { // Smallest distance between 2 players is foot to head
-                if (penetration_y > 0) { // a is inside b, so move a up
-                    a->y = (float)(b_top - PLAYER_HEIGHT + 1); // 1 pixel inside b to stick to b while they move
-                    a->vel_y = 0;
-                    a->on_ground = true;
-                    a->standing_on = b->sprite_id;
-                    b->has_player_on_top = true;
-                } else { // b is inside a, so move b up
-                    b->y = (float)(a_top - PLAYER_HEIGHT + 1);
-                    b->vel_y = 0;
-                    b->on_ground = true;
-                    b->standing_on = a->sprite_id;
-                    a->has_player_on_top = true;
-                }
-            }
-        }
-    }
-}
 
 void updatePlayerInput(Player *p, u16 keys, u16 keys_down) {
     if (keys & p->key_right) {
@@ -218,6 +173,52 @@ void resetStackingInfo(Player *players) {
     for (int i = 0; i < PLAYER_COUNT; i++)  { 
         players[i].standing_on = -1;
         players[i].has_player_on_top = false;
+    }
+}
+
+void resolvePlayerPlayerCollision(Player *players, int count) {
+    for (int i = 0; i < count; i++) {
+        for (int j = i + 1; j < count; j++) {
+            Player *a = &players[i];
+            Player *b = &players[j];
+
+            float a_left = a->x, a_top = a->y;
+            float a_right = a->x + PLAYER_WIDTH, a_bottom = a->y + PLAYER_HEIGHT;
+            float b_left = b->x, b_top = b->y;
+            float b_right = b->x + PLAYER_WIDTH, b_bottom = b->y + PLAYER_HEIGHT;
+
+            if (a_right <= b_left || b_right <= a_left) continue; // No horizontal overlap
+            if (a_bottom <= b_top || b_bottom <= a_top) continue; // No vertical overlap
+
+            float penetration_x = a_left < b_left 
+            ? a_right - b_left // a is left of b so penetration is how much a's right edge overlaps b's left edge
+            : -(b_right - a_left); // negative - push a right, b left
+            float penetration_y = a_top < b_top // true if a is above b (as coords increase downwards) 
+            ? a_bottom - b_top // a is above b so penetration is how much a's bottom edge overlaps b's top edge
+            : -(b_bottom - a_top);
+
+            if (fabsf(penetration_x) <= fabsf(penetration_y)) { // Smallest distance between 2 players sides is horizontal
+                a->x -= penetration_x / 2.0f;
+                b->x += penetration_x / 2.0f;
+                a->vel_x = 0;
+                b->vel_x = 0;
+
+            } else { // Smallest distance between 2 players is foot to head
+                if (penetration_y > 0) { // a is inside b, so move a up
+                    a->y = (float)(b_top - PLAYER_HEIGHT + 1); // 1 pixel inside b to stick to b while they move
+                    a->vel_y = 0;
+                    a->on_ground = true;
+                    a->standing_on = b->sprite_id;
+                    b->has_player_on_top = true;
+                } else { // b is inside a, so move b up
+                    b->y = (float)(a_top - PLAYER_HEIGHT + 1);
+                    b->vel_y = 0;
+                    b->on_ground = true;
+                    b->standing_on = a->sprite_id;
+                    a->has_player_on_top = true;
+                }
+            }
+        }
     }
 }
 

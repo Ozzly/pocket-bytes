@@ -11,8 +11,8 @@ ARM_NONE_EABI_PATH	?= $(WONDERFUL_TOOLCHAIN)/toolchain/gcc-arm-none-eabi/bin/
 # User config
 # ===========
 
-NAME		:= YoctoYard
-GAME_TITLE	:= yocto_yard.nds
+NAME		:= PocketBytes
+GAME_TITLE	:= Pocket Bytes
 GAME_SUBTITLE	:= not pico park
 GAME_AUTHOR	:= github.com/ozzly
 GAME_ICON	:= $(BLOCKSDS)/sys/icon.bmp

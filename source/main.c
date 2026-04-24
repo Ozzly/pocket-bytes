@@ -132,18 +132,16 @@ bool isSolid(int x, int y) {
     return NF_GetPoint(0, x, y) == COL_SOLID;
 }
 
-void resolvePlayerTileCollision(Player *p) {
-    // Horizontal Collision
-    p->x += p->vel_x;
+void resolvePlayerHorizontalTileCollision(Player *p, float displacement_x) {
     int int_player_x = (int)p->x, int_player_y = (int)p->y;
 
-    if (p->vel_x > 0) { // Check right edge
+    if (displacement_x > 0) { // Check right edge
         if (isSolid(int_player_x + PLAYER_WIDTH, int_player_y + 2) || isSolid(int_player_x + PLAYER_WIDTH, int_player_y + PLAYER_HEIGHT- 2)) { 
             p->x = (float)(((int_player_x + PLAYER_WIDTH) / TILE) * TILE - PLAYER_WIDTH) - 0.01f;
             p->vel_x = 0;
         }
     }
-    if (p->vel_x < 0) { // Check left edge
+    if (displacement_x < 0) { // Check left edge
         if (isSolid(int_player_x, int_player_y + 2) || isSolid(int_player_x, int_player_y + PLAYER_HEIGHT -2)) {
             if (int_player_x < 0) { // Fix character going past screen border, then teleporting to positive tile 1
                 p->x = 0;    
@@ -154,9 +152,16 @@ void resolvePlayerTileCollision(Player *p) {
         }
     }
 
+}
+
+void resolvePlayerTileCollision(Player *p) {
+    // Horizontal Collision
+    p->x += p->vel_x;
+    resolvePlayerHorizontalTileCollision(p, p->vel_x);
+
     // Vertical Collision
     p->y += p->vel_y;
-    int_player_x = (int)p->x, int_player_y = (int)p->y;
+    int int_player_x = (int)p->x, int_player_y = (int)p->y;
     p->on_ground = false;
 
     if (p->vel_y >= 0) { // falling or standing still, check feet
@@ -202,7 +207,9 @@ void applyCarry(Player *players, float *prev_x) {
     for (int i = 0; i < PLAYER_COUNT; i++) {
         if (players[i].standing_on != -1) {
             int bot = players[i].standing_on;
-            players[i].x += players[bot].x - prev_x[bot];
+            float displacement_x = players[bot].x - prev_x[bot];
+            players[i].x += displacement_x;
+            resolvePlayerHorizontalTileCollision(&players[i], displacement_x);
         }
     }
 }

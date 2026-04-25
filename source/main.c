@@ -15,7 +15,7 @@
 #define JUMP_BUFFER_TIME 3
 
 #define PLAYER_WIDTH 22
-#define PLAYER_HEIGHT 23
+#define PLAYER_HEIGHT 24
 #define TILE 8
 
 #define LEVEL_WIDTH 1024
@@ -414,7 +414,6 @@ int main(int argc, char **argv)
         executeJumps(players);
         // Player clamping to camera bounds
         playerClampToCamera(players, camera_x);
-
         // Camera follows players, but lets them walk to opposite ends of the screen 
         camera_x = getCameraPosition(players);
         NF_ScrollBg(0, 3, camera_x, 0);

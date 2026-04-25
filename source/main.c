@@ -272,6 +272,13 @@ void playerClampToCamera(Player *players, int camera_x) {
         }
 }
 
+void updatePlayerPosition(Player *players, int camera_x) {
+    for (int i =0; i < PLAYER_COUNT; i++) {
+        Player *p = &players[i];
+        NF_MoveSprite(0, p->sprite_id, p->x - camera_x - 4, p->y -4);
+    }
+}
+
 int getCameraPosition(Player *players) {
     float mid_x = ( players[0].x + players[1].x ) / 2.0f;
     int desired = (int)mid_x - CAMERA_OFFSET;
@@ -414,12 +421,7 @@ int main(int argc, char **argv)
         
 
         // Update player position on screen based on camera
-        for (int i =0; i < 2; i++) {
-            Player *p = &players[i];
-            s16 screen_x = (s16)(p->x - camera_x) - 4;
-            s16 screen_y = (s16)(p->y) - 4;
-            NF_MoveSprite(0, p->sprite_id, screen_x, screen_y);
-        }
+        updatePlayerPosition(players, camera_x);
 
         // Copy data from NFLib OAM buffers to the real OAM, wait for VBlank
         NF_SpriteOamSet(0);

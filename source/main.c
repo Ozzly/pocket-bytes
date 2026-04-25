@@ -26,6 +26,8 @@
 
 #define PLAYER_COUNT 2
 
+#define CAMERA_OFFSET 116 // Half of screen (128) - sprite center offset (12)
+
 typedef struct {
     float x, y;
     float vel_x, vel_y;
@@ -270,6 +272,22 @@ void playerClampToCamera(Player *players, int camera_x) {
         }
 }
 
+int getCameraPosition(Player *players) {
+    float mid_x = ( players[0].x + players[1].x ) / 2.0f;
+    int desired = (int)mid_x - CAMERA_OFFSET;
+    // Stop camera scrolling past level boundaries
+    if (desired < 0) desired = 0;
+    if (desired > LEVEL_WIDTH - 256) desired = LEVEL_WIDTH - 256;
+    // Stop camera scrolling if player touching left of screen
+    for (int i=0; i < 2; i++) {
+        if (desired > players[i].x) {
+            desired = players[i].x;
+        }
+    }
+
+    return desired;
+} 
+
 int main(int argc, char **argv)
 {
     // Screen for NitroFS init
@@ -390,13 +408,10 @@ int main(int argc, char **argv)
         // Player clamping to camera bounds
         playerClampToCamera(players, camera_x);
 
-        // Camera follows the lead player, but is clamped to level bounds
-        float lead_x = players[0].x > players[1].x ? players[0].x : players[1].x;
-        int desired = (int)lead_x - 192;
-        if (desired < 0) desired = 0;
-        if (desired > LEVEL_WIDTH - 256) desired = LEVEL_WIDTH - 256;
-        camera_x = desired; 
+        // Camera follows players, but lets them walk to opposite ends of the screen 
+        camera_x = getCameraPosition(players);
         NF_ScrollBg(0, 3, camera_x, 0);
+        
 
         // Update player position on screen based on camera
         for (int i =0; i < 2; i++) {

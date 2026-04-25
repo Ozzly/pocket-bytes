@@ -439,9 +439,9 @@ int main(int argc, char **argv)
 
     int camera_x = 0;
 
-    int curernt_level = 0;
-    loadLevel(&LEVELS[curernt_level]);
-    resetLevel(players, &camera_x, &LEVELS[curernt_level]);
+    int current_level = 0;
+    loadLevel(&LEVELS[current_level]);
+    resetLevel(players, &camera_x, &LEVELS[current_level]);
 
     int death_timer = PLAYER_DEATH_TIME;
 
@@ -504,7 +504,7 @@ int main(int argc, char **argv)
             if (death_timer <= 0) {
                 state = STATE_PLAYING;
                 death_timer = PLAYER_DEATH_TIME;
-                resetLevel(players, &camera_x, &LEVELS[curernt_level]);
+                resetLevel(players, &camera_x, &LEVELS[current_level]);
             }
         }
 

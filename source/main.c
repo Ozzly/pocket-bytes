@@ -25,8 +25,15 @@
 #define COL_SPIKE 3
 
 #define PLAYER_COUNT 2
+#define PLAYER_DEATH_TIME 120
 
 #define CAMERA_OFFSET 116 // Half of screen (128) - sprite center offset (12)
+
+typedef enum {
+    STATE_PLAYING,
+    STATE_DYING,
+} GameState;
+
 
 typedef struct {
     float x, y;
@@ -44,6 +51,19 @@ typedef struct {
 } Player;
 
 
+
+GameState state = STATE_PLAYING;
+
+
+// Functions for level setup and reset
+void resetLevel(Player *players, int *camera_x) {
+    players[0].x = 120.0f; players[0].y = 88.0f; players[0].vel_x = 0.0f; players[0].vel_y = 0.0f; players[0].on_ground = false; players[0].coyote_frames = 0; players[0].jump_buffer = 0; players[0].standing_on = -1; players[0].has_player_on_top = false;
+    players[1].x = 160.0f; players[1].y = 88.0f; players[1].vel_x = 0.0f; players[1].vel_y = 0.0f; players[1].on_ground = false; players[1].coyote_frames = 0; players[1].jump_buffer = 0; players[1].standing_on = -1; players[1].has_player_on_top = false;
+    *camera_x = 0;
+} 
+
+
+// Functions for main game loop
 void updatePlayerInput(Player *p, u16 keys, u16 keys_down) {
     if (keys & p->key_right) {
         p->vel_x += WALK_ACCELERATION;
@@ -295,6 +315,23 @@ int getCameraPosition(Player *players) {
     return desired;
 } 
 
+void resolvePlayerSpikeCollision(Player *players) {
+    for (int i=0; i < PLAYER_COUNT; i++) {
+        Player *p = &players[i];
+        int int_player_x = (int)p->x, int_player_y = (int)p->y;
+        if (NF_GetPoint(0, int_player_x + 2, int_player_y + PLAYER_HEIGHT - 1) == COL_SPIKE ||     // Foot left
+            NF_GetPoint(0, int_player_x + PLAYER_WIDTH /2, int_player_y + PLAYER_HEIGHT - 1) == COL_SPIKE || // Foot middle
+            NF_GetPoint(0, int_player_x + PLAYER_WIDTH - 2, int_player_y + PLAYER_HEIGHT - 1) == COL_SPIKE || // Foot right
+            NF_GetPoint(0, int_player_x + 2, int_player_y) == COL_SPIKE || // Head left
+            NF_GetPoint(0, int_player_x + PLAYER_WIDTH / 2, int_player_y) == COL_SPIKE || // Head middle
+            NF_GetPoint(0, int_player_x + PLAYER_WIDTH - 2, int_player_y) == COL_SPIKE // Head right
+        ) {
+            state = STATE_DYING;
+            NF_SpriteFrame(0, p->sprite_id, 6); // Set to death frame
+        }
+    }
+}
+
 int main(int argc, char **argv)
 {
     // Screen for NitroFS init
@@ -352,84 +389,90 @@ int main(int argc, char **argv)
 
     Player players[PLAYER_COUNT] = {
     {
-        .x = 120.0f, .y = 88.0f,
-        .vel_x = 0.0f, .vel_y = 0.0f,
-        .on_ground = false,
-        .coyote_frames = 0,
-        .jump_buffer = 0,
         .sprite_id = 0,
         .palette_id = 3,
         .sprite_frame = 0,
         .sprite_frame_debounce = 0,
         .key_left = KEY_LEFT, .key_right = KEY_RIGHT, .key_jump = KEY_UP,
-        .standing_on = -1,
-        .has_player_on_top = false,
     },
     {
-        .x = 160.0f, .y = 88.0f,
-        .vel_x = 0.0f, .vel_y = 0.0f,
-        .on_ground = false,
-        .coyote_frames = 0,
-        .jump_buffer = 0,
         .sprite_id = 1,
         .palette_id = 1,
         .sprite_frame = 0,
         .sprite_frame_debounce = 0,
         .key_left = KEY_Y, .key_right = KEY_A, .key_jump = KEY_X,
-        .standing_on = -1,
-        .has_player_on_top = false,
     }
 };
 
     int camera_x = 0;
 
+    resetLevel(players, &camera_x);
+
+    int death_timer = PLAYER_DEATH_TIME;
+
     while (1)
     {
-        // Read keypad
-        scanKeys();
-        u16 keys = keysHeld();
-        u16 keys_down = keysDown();
-
-        // Store previous player positions to apply carry movement (for people on top of moving players)
-        float prev_x[PLAYER_COUNT];
-        for (int i = 0; i < PLAYER_COUNT; i++) prev_x[i] = players[i].x;
-       
-
-        // Player movement, collision (map), and sprite animation
-        for (int i = 0; i < 2; i++) {
-            Player *p = &players[i];
-            updatePlayerInput(p, keys, keys_down);
-            updatePlayerPhysics(p);
-            resolvePlayerTileCollision(p); 
-            updatePlayerSprite(p);
+        if (state == STATE_PLAYING) {
+            // Read keypad
+            scanKeys();
+            u16 keys = keysHeld();
+            u16 keys_down = keysDown();
+    
+            // Store previous player positions to apply carry movement (for people on top of moving players)
+            float prev_x[PLAYER_COUNT];
+            for (int i = 0; i < PLAYER_COUNT; i++) prev_x[i] = players[i].x;
+           
+    
+            // Player movement, collision (map), and sprite animation
+            for (int i = 0; i < 2; i++) {
+                Player *p = &players[i];
+                updatePlayerInput(p, keys, keys_down);
+                updatePlayerPhysics(p);
+                resolvePlayerTileCollision(p); 
+                updatePlayerSprite(p);
+            }
+    
+            // Apply carry from last frame's standing_on
+            applyCarry(players, prev_x);
+            // Reset stacking info before checking player to player collision, freeing players from each other
+            resetStackingInfo(players); 
+            // Player to player collision
+            resolvePlayerPlayerCollision(players, PLAYER_COUNT);
+            // Jumping after resol;ving all collisions 
+            executeJumps(players);
+            // Player clamping to camera bounds
+            playerClampToCamera(players, camera_x);
+            // Camera follows players, but lets them walk to opposite ends of the screen 
+            camera_x = getCameraPosition(players);
+            NF_ScrollBg(0, 3, camera_x, 0);
+            // Check spike collision after all movement and other collisions resolved
+            resolvePlayerSpikeCollision(players);
+    
+            // Update player position on screen based on camera
+            // Keep below all player and collision updates
+            updatePlayerPosition(players, camera_x);
         }
 
-        // Apply carry from last frame's standing_on
-        applyCarry(players, prev_x);
-        // Reset stacking info before checking player to player collision, freeing players from each other
-        resetStackingInfo(players); 
-        // Player to player collision
-        resolvePlayerPlayerCollision(players, PLAYER_COUNT);
-        // Jumping after resolving all collisions 
-        executeJumps(players);
-        // Player clamping to camera bounds
-        playerClampToCamera(players, camera_x);
-        // Camera follows players, but lets them walk to opposite ends of the screen 
-        camera_x = getCameraPosition(players);
-        NF_ScrollBg(0, 3, camera_x, 0);
-        
 
-        // Update player position on screen based on camera
-        updatePlayerPosition(players, camera_x);
+
+        if (state == STATE_DYING) {
+            death_timer--;
+
+            if (death_timer <= 0) {
+                state = STATE_PLAYING;
+                death_timer = PLAYER_DEATH_TIME;
+                resetLevel(players, &camera_x);
+            }
+        }
 
         // Copy data from NFLib OAM buffers to the real OAM, wait for VBlank
-        NF_SpriteOamSet(0);
-        NF_SpriteOamSet(1);
-        // Wait for the screen refresh
-        swiWaitForVBlank();
-        // Actually update the OAM
-        oamUpdate(&oamMain);
-        oamUpdate(&oamSub);
+            NF_SpriteOamSet(0);
+            NF_SpriteOamSet(1);
+            // Wait for the screen refresh
+            swiWaitForVBlank();
+            // Actually update the OAM
+            oamUpdate(&oamMain);
+            oamUpdate(&oamSub);
     }
 
     // If this is reached, the program will return to the loader if the loader

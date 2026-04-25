@@ -19,11 +19,11 @@
 #define TILE 8
 
 
-#define COL_SOLID 0
-#define COL_EMPTY 2
-#define COL_SPIKE 3
+#define COL_SOLID 2
+#define COL_EMPTY 3
+#define COL_SPIKE 1
 
-#define PLAYER_COUNT 2
+#define MAX_PLAYERS 4
 #define PLAYER_DEATH_TIME 90
 
 #define CAMERA_OFFSET 116 // Half of screen (128) - sprite center offset (12)
@@ -39,8 +39,9 @@ typedef struct {
     const char *bg_name;
     const char *col_name;
     int width;
-    float spawn_x[PLAYER_COUNT];
-    float spawn_y[PLAYER_COUNT];
+    float spawn_x[MAX_PLAYERS];
+    float spawn_y[MAX_PLAYERS];
+    int player_count;
 } LevelConfig;
 
 static const LevelConfig LEVELS[] = {
@@ -48,11 +49,12 @@ static const LevelConfig LEVELS[] = {
         .bg_name = "bg/level1",
         .col_name = "collision/level1_col",
         .width = 1024,
-        .spawn_x = { 120.0f, 160.0f },
-        .spawn_y = { 80.0f, 80.0f },
+        .spawn_x = { 40.0f, 60.0f, 80.0f },
+        .spawn_y = { 150.0f, 150.0f, 150.0f },
     },
 };
 
+static int current_player_count = 2;
 static int current_level_width = 0;
 
 typedef struct {
@@ -74,10 +76,16 @@ typedef struct {
 
 
 
-
 // Functions for level setup and reset
+void loadLevel(const LevelConfig *config) {
+    current_level_width = config->width;
+    NF_LoadTiledBg(config->bg_name, "level", config->width, 256);
+    NF_CreateTiledBg(0, 3, "level");
+    NF_LoadCollisionBg(config->col_name, 0, config->width, 256);
+}
+
 void resetLevel(Player *players, int *camera_x, const LevelConfig *config) {
-    for (int i=0; i < PLAYER_COUNT; i++) {
+    for (int i=0; i < current_player_count; i++) {
         players[i].x = config->spawn_x[i];
         players[i].y = config->spawn_y[i];
         players[i].vel_x = 0.0f;
@@ -211,7 +219,7 @@ void updatePlayerSprite(Player *p) {
 }
 
 void applyCarry(Player *players, float *prev_x) {
-    for (int i = 0; i < PLAYER_COUNT; i++) {
+    for (int i = 0; i < current_player_count; i++) {
         if (players[i].standing_on != -1) {
             int bot = players[i].standing_on;
             float displacement_x = players[bot].x - prev_x[bot];
@@ -222,15 +230,15 @@ void applyCarry(Player *players, float *prev_x) {
 }
 
 void resetStackingInfo(Player *players) {
-    for (int i = 0; i < PLAYER_COUNT; i++)  { 
+    for (int i = 0; i < current_player_count; i++)  { 
         players[i].standing_on = -1;
         players[i].has_player_on_top = false;
     }
 }
 
-void resolvePlayerPlayerCollision(Player *players, int count) {
-    for (int i = 0; i < count; i++) {
-        for (int j = i + 1; j < count; j++) {
+void resolvePlayerPlayerCollision(Player *players) {
+    for (int i = 0; i < current_player_count; i++) {
+        for (int j = i + 1; j < current_player_count; j++) {
             Player *a = &players[i];
             Player *b = &players[j];
 
@@ -298,7 +306,7 @@ void resolvePlayerPlayerCollision(Player *players, int count) {
 }
 
 void executeJumps(Player *players) {
-    for (int i=0; i < PLAYER_COUNT; i++) {
+    for (int i=0; i < current_player_count; i++) {
         Player *p = &players[i];
         if (p->jump_buffer > 0 && p->coyote_frames > 0 && !p->has_player_on_top) {
             p->vel_y = JUMP_STRENGTH;
@@ -309,34 +317,33 @@ void executeJumps(Player *players) {
 }
 
 void playerClampToCamera(Player *players, int camera_x) {
-    for (int i=0; i < 2; i++) {
-            Player *p = &players[i];
-            if (p->x < camera_x) {
-                p->x = (float)camera_x;
-                p->vel_x = 0;
-            }
-            if (p->x + PLAYER_WIDTH > camera_x + 256) {
-                p->x = (float)(camera_x + 256 - PLAYER_WIDTH);
-                p->vel_x = 0;
-            }
-        }
-}
-
-void updatePlayerPosition(Player *players, int camera_x) {
-    for (int i =0; i < PLAYER_COUNT; i++) {
+    for (int i=0; i < current_player_count; i++) {
         Player *p = &players[i];
-        NF_MoveSprite(0, p->sprite_id, p->x - camera_x - 4, p->y -4);
+        if (p->x < camera_x) {
+            p->x = (float)camera_x;
+            p->vel_x = 0;
+        }
+        if (p->x + PLAYER_WIDTH > camera_x + 256) {
+            p->x = (float)(camera_x + 256 - PLAYER_WIDTH);
+            p->vel_x = 0;
+        }
     }
 }
 
 int getCameraPosition(Player *players) {
-    float mid_x = ( players[0].x + players[1].x ) / 2.0f;
+    float lead_x;
+    float tail_x;
+    for (int i=0; i < current_player_count; i++) {
+        if ( i == 0 || players[i].x > lead_x) lead_x = players[i].x;
+        if ( i == 0 || players[i].x < tail_x) tail_x = players[i].x;
+    }
+    float mid_x = (tail_x + lead_x) / 2.0f;
     int desired = (int)mid_x - CAMERA_OFFSET;
     // Stop camera scrolling past level boundaries
     if (desired < 0) desired = 0;
     if (desired > current_level_width - 256) desired = current_level_width - 256;
     // Stop camera scrolling if player touching left of screen
-    for (int i=0; i < 2; i++) {
+    for (int i=0; i < current_player_count; i++) {
         if (desired > players[i].x) {
             desired = players[i].x;
         }
@@ -346,7 +353,7 @@ int getCameraPosition(Player *players) {
 } 
 
 void resolvePlayerSpikeCollision(Player *players) {
-    for (int i=0; i < PLAYER_COUNT; i++) {
+    for (int i=0; i < current_player_count; i++) {
         Player *p = &players[i];
         int int_player_x = (int)p->x, int_player_y = (int)p->y;
         if (NF_GetPoint(0, int_player_x + 2, int_player_y + PLAYER_HEIGHT - 1) == COL_SPIKE ||     // Foot left
@@ -364,13 +371,12 @@ void resolvePlayerSpikeCollision(Player *players) {
     }
 }
 
-void loadLevel(const LevelConfig *config) {
-    current_level_width = config->width;
-    NF_LoadTiledBg(config->bg_name, "level", config->width, 256);
-    NF_CreateTiledBg(0, 3, "level");
-    NF_LoadCollisionBg(config->col_name, 0, config->width, 256);
+void updatePlayerPosition(Player *players, int camera_x) {
+    for (int i =0; i < current_player_count; i++) {
+        Player *p = &players[i];
+        NF_MoveSprite(0, p->sprite_id, p->x - camera_x - 4, p->y -4);
+    }
 }
-
 
 int main(int argc, char **argv)
 {
@@ -416,26 +422,31 @@ int main(int argc, char **argv)
     // Create sprite instance
     NF_CreateSprite(0, 0, 0, 3, 120, 80);
     NF_CreateSprite(0, 1, 0, 1, 160, 80);
+    // NF_CreateSprite(0, 2, 0, 2, 140, 90);
+
 
     // Set background color
     BG_PALETTE[0] = RGB15(31, 31, 31);
 
-    Player players[PLAYER_COUNT] = {
-    {
-        .sprite_id = 0,
-        .palette_id = 3,
-        .sprite_frame = 0,
-        .sprite_frame_debounce = 0,
-        .key_left = KEY_LEFT, .key_right = KEY_RIGHT, .key_jump = KEY_UP,
-    },
-    {
-        .sprite_id = 1,
-        .palette_id = 1,
-        .sprite_frame = 0,
-        .sprite_frame_debounce = 0,
-        .key_left = KEY_Y, .key_right = KEY_A, .key_jump = KEY_X,
+    Player players[MAX_PLAYERS];
+    for (int i=0; i < current_player_count; i++) {
+        players[i].sprite_id = i;
+        players[i].palette_id = i + 1;
+        players[i].sprite_frame = 0;
+        players[i].sprite_frame_debounce = 0;
     }
-};
+
+    players[0].key_left = KEY_LEFT;
+    players[0].key_right = KEY_RIGHT; 
+    players[0].key_jump = KEY_UP;
+
+    players[1].key_left = KEY_Y;
+    players[1].key_right = KEY_A;
+    players[1].key_jump = KEY_X;
+
+    players[2].key_left = KEY_L;
+    players[2].key_right = KEY_R;
+    players[2].key_jump = KEY_B;
 
     int camera_x = 0;
 
@@ -454,12 +465,12 @@ int main(int argc, char **argv)
             u16 keys_down = keysDown();
     
             // Store previous player positions to apply carry movement (for people on top of moving players)
-            float prev_x[PLAYER_COUNT];
-            for (int i = 0; i < PLAYER_COUNT; i++) prev_x[i] = players[i].x;
+            float prev_x[MAX_PLAYERS];
+            for (int i = 0; i < current_player_count; i++) prev_x[i] = players[i].x;
            
     
             // Player movement, collision (map), and sprite animation
-            for (int i = 0; i < 2; i++) {
+            for (int i = 0; i < current_player_count; i++) {
                 Player *p = &players[i];
                 updatePlayerInput(p, keys, keys_down);
                 updatePlayerPhysics(p);
@@ -472,7 +483,7 @@ int main(int argc, char **argv)
             // Reset stacking info before checking player to player collision, freeing players from each other
             resetStackingInfo(players); 
             // Player to player collision
-            resolvePlayerPlayerCollision(players, PLAYER_COUNT);
+            resolvePlayerPlayerCollision(players);
             // Jumping after resol;ving all collisions 
             executeJumps(players);
             // Player clamping to camera bounds
@@ -492,7 +503,7 @@ int main(int argc, char **argv)
             death_timer--;
 
             // Apply gravity to dead players until they fall off screen
-            for (int i=0; i < PLAYER_COUNT; i++) {
+            for (int i=0; i < current_player_count; i++) {
                 Player *p = &players[i];
                 if (p->is_dead && death_timer < PLAYER_DEATH_TIME-15 && p->y < 192) { 
                     p->vel_y += GRAVITY;

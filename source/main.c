@@ -25,7 +25,7 @@
 #define COL_SPIKE 3
 
 #define PLAYER_COUNT 2
-#define PLAYER_DEATH_TIME 120
+#define PLAYER_DEATH_TIME 90
 
 #define CAMERA_OFFSET 116 // Half of screen (128) - sprite center offset (12)
 
@@ -48,6 +48,7 @@ typedef struct {
     u16 key_left, key_right, key_jump;
     int standing_on;
     bool has_player_on_top;
+    bool is_dead;
 } Player;
 
 
@@ -57,8 +58,8 @@ GameState state = STATE_PLAYING;
 
 // Functions for level setup and reset
 void resetLevel(Player *players, int *camera_x) {
-    players[0].x = 120.0f; players[0].y = 88.0f; players[0].vel_x = 0.0f; players[0].vel_y = 0.0f; players[0].on_ground = false; players[0].coyote_frames = 0; players[0].jump_buffer = 0; players[0].standing_on = -1; players[0].has_player_on_top = false;
-    players[1].x = 160.0f; players[1].y = 88.0f; players[1].vel_x = 0.0f; players[1].vel_y = 0.0f; players[1].on_ground = false; players[1].coyote_frames = 0; players[1].jump_buffer = 0; players[1].standing_on = -1; players[1].has_player_on_top = false;
+    players[0].x = 120.0f; players[0].y = 88.0f; players[0].vel_x = 0.0f; players[0].vel_y = 0.0f; players[0].on_ground = false; players[0].coyote_frames = 0; players[0].jump_buffer = 0; players[0].standing_on = -1; players[0].has_player_on_top = false; players[0].is_dead = false;
+    players[1].x = 160.0f; players[1].y = 88.0f; players[1].vel_x = 0.0f; players[1].vel_y = 0.0f; players[1].on_ground = false; players[1].coyote_frames = 0; players[1].jump_buffer = 0; players[1].standing_on = -1; players[1].has_player_on_top = false; players[1].is_dead = false;
     *camera_x = 0;
 } 
 
@@ -328,6 +329,8 @@ void resolvePlayerSpikeCollision(Player *players) {
         ) {
             state = STATE_DYING;
             NF_SpriteFrame(0, p->sprite_id, 6); // Set to death frame
+            p->is_dead = true; // track who died
+            p->vel_y = -6.0f; // death bounce
         }
     }
 }
@@ -448,9 +451,7 @@ int main(int argc, char **argv)
             // Check spike collision after all movement and other collisions resolved
             resolvePlayerSpikeCollision(players);
     
-            // Update player position on screen based on camera
-            // Keep below all player and collision updates
-            updatePlayerPosition(players, camera_x);
+            
         }
 
 
@@ -458,6 +459,16 @@ int main(int argc, char **argv)
         if (state == STATE_DYING) {
             death_timer--;
 
+            // Apply gravity to dead players until they fall off screen
+            for (int i=0; i < PLAYER_COUNT; i++) {
+                Player *p = &players[i];
+                if (p->is_dead && death_timer < PLAYER_DEATH_TIME-15 && p->y < 192) { 
+                    p->vel_y += GRAVITY;
+                    p->y += p->vel_y;
+                }
+            }
+
+            // Rest level after death animation
             if (death_timer <= 0) {
                 state = STATE_PLAYING;
                 death_timer = PLAYER_DEATH_TIME;
@@ -465,14 +476,18 @@ int main(int argc, char **argv)
             }
         }
 
+        // Update player position on screen based on camera
+        // Keep below all player and collision updates
+        updatePlayerPosition(players, camera_x);
+
         // Copy data from NFLib OAM buffers to the real OAM, wait for VBlank
-            NF_SpriteOamSet(0);
-            NF_SpriteOamSet(1);
-            // Wait for the screen refresh
-            swiWaitForVBlank();
-            // Actually update the OAM
-            oamUpdate(&oamMain);
-            oamUpdate(&oamSub);
+        NF_SpriteOamSet(0);
+        NF_SpriteOamSet(1);
+        // Wait for the screen refresh
+        swiWaitForVBlank();
+        // Actually update the OAM
+        oamUpdate(&oamMain);
+        oamUpdate(&oamSub);
     }
 
     // If this is reached, the program will return to the loader if the loader

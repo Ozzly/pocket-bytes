@@ -18,7 +18,6 @@
 #define PLAYER_HEIGHT 24
 #define TILE 8
 
-#define LEVEL_WIDTH 1024
 
 #define COL_SOLID 0
 #define COL_EMPTY 2
@@ -34,6 +33,27 @@ typedef enum {
     STATE_DYING,
 } GameState;
 
+GameState state = STATE_PLAYING;
+
+typedef struct {
+    const char *bg_name;
+    const char *col_name;
+    int width;
+    float spawn_x[PLAYER_COUNT];
+    float spawn_y[PLAYER_COUNT];
+} LevelConfig;
+
+static const LevelConfig LEVELS[] = {
+    {
+        .bg_name = "bg/level1",
+        .col_name = "collision/level1_col",
+        .width = 1024,
+        .spawn_x = { 120.0f, 160.0f },
+        .spawn_y = { 80.0f, 80.0f },
+    },
+};
+
+static int current_level_width = 0;
 
 typedef struct {
     float x, y;
@@ -53,13 +73,22 @@ typedef struct {
 
 
 
-GameState state = STATE_PLAYING;
 
 
 // Functions for level setup and reset
-void resetLevel(Player *players, int *camera_x) {
-    players[0].x = 120.0f; players[0].y = 88.0f; players[0].vel_x = 0.0f; players[0].vel_y = 0.0f; players[0].on_ground = false; players[0].coyote_frames = 0; players[0].jump_buffer = 0; players[0].standing_on = -1; players[0].has_player_on_top = false; players[0].is_dead = false;
-    players[1].x = 160.0f; players[1].y = 88.0f; players[1].vel_x = 0.0f; players[1].vel_y = 0.0f; players[1].on_ground = false; players[1].coyote_frames = 0; players[1].jump_buffer = 0; players[1].standing_on = -1; players[1].has_player_on_top = false; players[1].is_dead = false;
+void resetLevel(Player *players, int *camera_x, const LevelConfig *config) {
+    for (int i=0; i < PLAYER_COUNT; i++) {
+        players[i].x = config->spawn_x[i];
+        players[i].y = config->spawn_y[i];
+        players[i].vel_x = 0.0f;
+        players[i].vel_y = 0.0f;
+        players[i].on_ground = false;
+        players[i].coyote_frames = 0;
+        players[i].jump_buffer = 0;
+        players[i].standing_on = -1;
+        players[i].has_player_on_top = false;
+        players[i].is_dead = false;
+    }
     *camera_x = 0;
 } 
 
@@ -106,7 +135,7 @@ void updatePlayerPhysics(Player *p) {
 
 bool isSolid(int x, int y) {
     if (y >= 192 || y < 0) return false;
-    if (x < 0 || x >= LEVEL_WIDTH) return true;
+    if (x < 0 || x >= current_level_width) return true;
     return NF_GetPoint(0, x, y) == COL_SOLID;
 }
 
@@ -305,7 +334,7 @@ int getCameraPosition(Player *players) {
     int desired = (int)mid_x - CAMERA_OFFSET;
     // Stop camera scrolling past level boundaries
     if (desired < 0) desired = 0;
-    if (desired > LEVEL_WIDTH - 256) desired = LEVEL_WIDTH - 256;
+    if (desired > current_level_width - 256) desired = current_level_width - 256;
     // Stop camera scrolling if player touching left of screen
     for (int i=0; i < 2; i++) {
         if (desired > players[i].x) {
@@ -335,6 +364,14 @@ void resolvePlayerSpikeCollision(Player *players) {
     }
 }
 
+void loadLevel(const LevelConfig *config) {
+    current_level_width = config->width;
+    NF_LoadTiledBg(config->bg_name, "level", config->width, 256);
+    NF_CreateTiledBg(0, 3, "level");
+    NF_LoadCollisionBg(config->col_name, 0, config->width, 256);
+}
+
+
 int main(int argc, char **argv)
 {
     // Screen for NitroFS init
@@ -357,14 +394,7 @@ int main(int argc, char **argv)
     NF_InitTiledBgBuffers();
     NF_InitTiledBgSys(0);
     NF_InitTiledBgSys(1);
-    // Load level1
-    NF_LoadTiledBg("bg/level1", "level1", LEVEL_WIDTH, 256);
-    NF_CreateTiledBg(0, 3, "level1");
-
-    // Init + Load collision map 
     NF_InitCmapBuffers();
-    NF_LoadCollisionBg("collision/level1_col", 0, LEVEL_WIDTH, 256);
-
 
     // Init sprites
     NF_InitSpriteBuffers();
@@ -409,7 +439,9 @@ int main(int argc, char **argv)
 
     int camera_x = 0;
 
-    resetLevel(players, &camera_x);
+    int curernt_level = 0;
+    loadLevel(&LEVELS[curernt_level]);
+    resetLevel(players, &camera_x, &LEVELS[curernt_level]);
 
     int death_timer = PLAYER_DEATH_TIME;
 
@@ -472,7 +504,7 @@ int main(int argc, char **argv)
             if (death_timer <= 0) {
                 state = STATE_PLAYING;
                 death_timer = PLAYER_DEATH_TIME;
-                resetLevel(players, &camera_x);
+                resetLevel(players, &camera_x, &LEVELS[curernt_level]);
             }
         }
 

@@ -47,8 +47,10 @@ typedef struct {
     int width;
     float spawn_x[MAX_PLAYERS];
     float spawn_y[MAX_PLAYERS];
-    float key_spawn_x;
-    float key_spawn_y;
+    int key_spawn_x;
+    int key_spawn_y;
+    int door_x;
+    int door_y;
 } LevelConfig;
 
 static const LevelConfig LEVELS[] = {
@@ -58,8 +60,10 @@ static const LevelConfig LEVELS[] = {
         .width = 1024,
         .spawn_x = { 40.0f, 60.0f, 80.0f },
         .spawn_y = { 150.0f, 150.0f, 150.0f },
-        .key_spawn_x = 600.0f,
-        .key_spawn_y = 72.0f,
+        .key_spawn_x = 600,
+        .key_spawn_y = 72,
+        .door_x = 780,
+        .door_y = 145,
     },
 };
 
@@ -105,6 +109,13 @@ void loadLevel(const LevelConfig *config, Key *key) {
     NF_VramSpritePal(0, 4, 4);
     NF_CreateSprite(0, 4, 1, 4, 0, 0);
     key->sprite_id = 4;
+
+    NF_LoadSpriteGfx("sprite/door", 2, 32, 32);
+    NF_VramSpriteGfx(0, 2, 2, false);
+    NF_LoadSpritePal("sprite/door", 5);
+    NF_VramSpritePal(0, 5, 5);
+    NF_CreateSprite(0, 5, 2, 5, 0, 0);
+
 }
 
 void resetLevel(Player *players, float *camera_x, const LevelConfig *config, Key *key) {
@@ -430,12 +441,12 @@ void updatePlayerPosition(Player *players, float camera_x) {
     }
 }
 
-void updateKeyPosition(Key key, float camera_x) {
-    float key_screen_x = key.x - (float)camera_x;
-    if (key_screen_x < -KEY_WIDTH || key_screen_x >= 256) {
-        NF_MoveSprite(0, key.sprite_id, 0, 192); // hide below screen to prevent OAM wrapping sprite
+void updateObjectPosition(int sprite_id, float x, float y, float camera_x) {
+    float screen_x = x - camera_x;
+    if (screen_x < 0 || screen_x >= 256) {
+        NF_MoveSprite(0, sprite_id, 0, 192); // hide below screen to prevent OAM wrapping sprite
     } else {
-        NF_MoveSprite(0, key.sprite_id, key_screen_x, key.y);
+        NF_MoveSprite(0, sprite_id, screen_x, y);
     }
 }
 
@@ -591,8 +602,10 @@ int main(int argc, char **argv)
         // Update player position on screen based on camera
         // Keep below all player and collision updates
         updatePlayerPosition(players, camera_x);
-        // Update key position
-        updateKeyPosition(key, camera_x);
+        // Update object positions relative to camera
+        updateObjectPosition(key.sprite_id, key.x, key.y, camera_x); // key
+        updateObjectPosition(5, LEVELS[current_level].door_x, LEVELS[current_level].door_y, camera_x); // door
+        
         
 
         // Copy data from NFLib OAM buffers to the real OAM, wait for VBlank

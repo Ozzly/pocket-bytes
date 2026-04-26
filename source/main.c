@@ -19,7 +19,10 @@
 #define TILE 8
 
 #define KEY_WIDTH 16
-#define KEY_HEIGHT 32
+#define KEY_HEIGHT 24
+
+#define DOOR_WIDTH 24
+#define DOOR_HEIGHT 32
 
 
 #define COL_SOLID 2
@@ -84,6 +87,7 @@ typedef struct {
     float x, y;
     int sprite_id;
     int carried_by; // -1 if not being carried
+    int swap_buffer;
 } Key;
 
 
@@ -121,6 +125,7 @@ void resetLevel(Player *players, float *camera_x, const LevelConfig *config, Key
     key->x = config->key_spawn_x;
     key->y = config->key_spawn_y;
     key->carried_by = -1;
+    key->swap_buffer = 0;
 } 
 
 // Helper functions
@@ -399,12 +404,41 @@ void resolvePlayerSpikeCollision(Player *players) {
     }
 }
 
+void keyPlayerTracking(Player *players, Key *key) {
+    for (int i=0; i < current_player_count; i++) {
+        Player *p = &players[i];
+        if (overlaps(p->x, p->y, PLAYER_WIDTH, PLAYER_HEIGHT, key->x, key->y, KEY_WIDTH, KEY_HEIGHT) && key->carried_by != p->sprite_id && key->swap_buffer == 0 ) {
+            key->carried_by = p->sprite_id;
+            key->swap_buffer = 20;
+        }
+    }
+
+    if (key->swap_buffer > 0) key->swap_buffer--;
+    if (key->carried_by != -1) {
+        Player *carrier = &players[key->carried_by];
+        float target_x = carrier->x - KEY_WIDTH / 2.0f;
+        float target_y = carrier->y - KEY_HEIGHT / 2.0f;
+        key->x += (target_x - key->x) * 0.10f;
+        key->y += (target_y - key->y) * 0.10f;
+    }
+}
+
 void updatePlayerPosition(Player *players, float camera_x) {
     for (int i =0; i < current_player_count; i++) {
         Player *p = &players[i];
         NF_MoveSprite(0, p->sprite_id, p->x - camera_x - 4, p->y -4);
     }
 }
+
+void updateKeyPosition(Key key, float camera_x) {
+    float key_screen_x = key.x - (float)camera_x;
+    if (key_screen_x < -KEY_WIDTH || key_screen_x >= 256) {
+        NF_MoveSprite(0, key.sprite_id, 0, 192); // hide below screen to prevent OAM wrapping sprite
+    } else {
+        NF_MoveSprite(0, key.sprite_id, key_screen_x, key.y);
+    }
+}
+
 
 int main(int argc, char **argv)
 {
@@ -486,7 +520,6 @@ int main(int argc, char **argv)
     resetLevel(players, &camera_x, &LEVELS[current_level], &key);
 
     int death_timer = PLAYER_DEATH_TIME;
-    int key_swap_buffer = 0;
 
     while (1)
     {
@@ -526,24 +559,9 @@ int main(int argc, char **argv)
             // Check spike collision after all movement and other collisions resolved
             resolvePlayerSpikeCollision(players);
 
-            for (int i=0; i < current_player_count; i++) {
-                Player *p = &players[i];
-                if (overlaps(p->x, p->y, PLAYER_WIDTH, PLAYER_HEIGHT, key.x, key.y, KEY_WIDTH, KEY_HEIGHT) && key.carried_by != p->sprite_id && key_swap_buffer == 0 ) {
-                    key.carried_by = p->sprite_id;
-                    key_swap_buffer = 20;
-                }
-            }
-
-            if (key_swap_buffer > 0) key_swap_buffer--;
-            if (key.carried_by != -1) {
-
-
-                Player *carrier = &players[key.carried_by];
-                float target_x = carrier->x - KEY_WIDTH / 2.0f;
-                float target_y = carrier->y - KEY_HEIGHT / 2.0f;
-                key.x += (target_x - key.x) * 0.10f;
-                key.y += (target_y - key.y) * 0.10f;
-            }
+            // Track interactions with the key & have the key follow the player
+            keyPlayerTracking(players, &key);
+            
 
 
         }
@@ -574,12 +592,8 @@ int main(int argc, char **argv)
         // Keep below all player and collision updates
         updatePlayerPosition(players, camera_x);
         // Update key position
-        float key_screen_x = key.x - (float)camera_x;
-        if (key_screen_x < -KEY_WIDTH || key_screen_x >= 256) {
-            NF_MoveSprite(0, key.sprite_id, 0, 192); // hide below screen to prevent OAM wrapping sprite
-        } else {
-            NF_MoveSprite(0, key.sprite_id, key_screen_x, key.y);
-        }
+        updateKeyPosition(key, camera_x);
+        
 
         // Copy data from NFLib OAM buffers to the real OAM, wait for VBlank
         NF_SpriteOamSet(0);

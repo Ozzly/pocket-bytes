@@ -3,6 +3,7 @@
 GRIT="/opt/wonderful/thirdparty/blocksds/core/tools/grit/grit"
 
 $GRIT byte.png -ftB -fh! -gTFF00FF -gt -gB8 -m!
+$GRIT key.png -ftB -fh! -gTFF00FF -gt -gB8 -m!
 mv *.pal *.img ../nitrofiles/sprite
 $GRIT byte-mauve.png -ftB -fh! -gTFF00FF -gt -gB8 -m!
 $GRIT byte-saphire.png -ftB -fh! -gTFF00FF -gt -gB8 -m!

@@ -18,6 +18,9 @@
 #define PLAYER_HEIGHT 24
 #define TILE 8
 
+#define KEY_WIDTH 16
+#define KEY_HEIGHT 32
+
 
 #define COL_SOLID 2
 #define COL_EMPTY 3
@@ -41,7 +44,8 @@ typedef struct {
     int width;
     float spawn_x[MAX_PLAYERS];
     float spawn_y[MAX_PLAYERS];
-    int player_count;
+    float key_spawn_x;
+    float key_spawn_y;
 } LevelConfig;
 
 static const LevelConfig LEVELS[] = {
@@ -51,6 +55,8 @@ static const LevelConfig LEVELS[] = {
         .width = 1024,
         .spawn_x = { 40.0f, 60.0f, 80.0f },
         .spawn_y = { 150.0f, 150.0f, 150.0f },
+        .key_spawn_x = 600.0f,
+        .key_spawn_y = 72.0f,
     },
 };
 
@@ -74,17 +80,30 @@ typedef struct {
 } Player;
 
 
+typedef struct {
+    float x, y;
+    int sprite_id;
+    int carried_by; // -1 if not being carried
+} Key;
+
 
 
 // Functions for level setup and reset
-void loadLevel(const LevelConfig *config) {
+void loadLevel(const LevelConfig *config, Key *key) {
     current_level_width = config->width;
     NF_LoadTiledBg(config->bg_name, "level", config->width, 256);
     NF_CreateTiledBg(0, 3, "level");
     NF_LoadCollisionBg(config->col_name, 0, config->width, 256);
+
+    NF_LoadSpriteGfx("sprite/key", 1, 16, 32);
+    NF_VramSpriteGfx(0, 1, 1, false);
+    NF_LoadSpritePal("sprite/key", 4);
+    NF_VramSpritePal(0, 4, 4);
+    NF_CreateSprite(0, 4, 1, 4, 0, 0);
+    key->sprite_id = 4;
 }
 
-void resetLevel(Player *players, int *camera_x, const LevelConfig *config) {
+void resetLevel(Player *players, float *camera_x, const LevelConfig *config, Key *key) {
     for (int i=0; i < current_player_count; i++) {
         players[i].x = config->spawn_x[i];
         players[i].y = config->spawn_y[i];
@@ -98,7 +117,16 @@ void resetLevel(Player *players, int *camera_x, const LevelConfig *config) {
         players[i].is_dead = false;
     }
     *camera_x = 0;
+
+    key->x = config->key_spawn_x;
+    key->y = config->key_spawn_y;
+    key->carried_by = -1;
 } 
+
+// Helper functions
+bool overlaps(float ax, float ay, float aw, float ah, float bx, float by, float bw, float bh) {
+    return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
+}
 
 
 // Functions for main game loop
@@ -316,11 +344,11 @@ void executeJumps(Player *players) {
     }
 }
 
-void playerClampToCamera(Player *players, int camera_x) {
+void playerClampToCamera(Player *players, float camera_x) {
     for (int i=0; i < current_player_count; i++) {
         Player *p = &players[i];
         if (p->x < camera_x) {
-            p->x = (float)camera_x;
+            p->x = camera_x;
             p->vel_x = 0;
         }
         if (p->x + PLAYER_WIDTH > camera_x + 256) {
@@ -371,7 +399,7 @@ void resolvePlayerSpikeCollision(Player *players) {
     }
 }
 
-void updatePlayerPosition(Player *players, int camera_x) {
+void updatePlayerPosition(Player *players, float camera_x) {
     for (int i =0; i < current_player_count; i++) {
         Player *p = &players[i];
         NF_MoveSprite(0, p->sprite_id, p->x - camera_x - 4, p->y -4);
@@ -424,6 +452,10 @@ int main(int argc, char **argv)
     NF_CreateSprite(0, 1, 0, 1, 160, 80);
     // NF_CreateSprite(0, 2, 0, 2, 140, 90);
 
+    
+
+    Key key;
+
 
     // Set background color
     BG_PALETTE[0] = RGB15(31, 31, 31);
@@ -448,13 +480,13 @@ int main(int argc, char **argv)
     players[2].key_right = KEY_R;
     players[2].key_jump = KEY_B;
 
-    int camera_x = 0;
-
+    float camera_x = 0;
     int current_level = 0;
-    loadLevel(&LEVELS[current_level]);
-    resetLevel(players, &camera_x, &LEVELS[current_level]);
+    loadLevel(&LEVELS[current_level], &key);
+    resetLevel(players, &camera_x, &LEVELS[current_level], &key);
 
     int death_timer = PLAYER_DEATH_TIME;
+    int key_swap_buffer = 0;
 
     while (1)
     {
@@ -493,8 +525,27 @@ int main(int argc, char **argv)
             NF_ScrollBg(0, 3, camera_x, 0);
             // Check spike collision after all movement and other collisions resolved
             resolvePlayerSpikeCollision(players);
-    
-            
+
+            for (int i=0; i < current_player_count; i++) {
+                Player *p = &players[i];
+                if (overlaps(p->x, p->y, PLAYER_WIDTH, PLAYER_HEIGHT, key.x, key.y, KEY_WIDTH, KEY_HEIGHT) && key.carried_by != p->sprite_id && key_swap_buffer == 0 ) {
+                    key.carried_by = p->sprite_id;
+                    key_swap_buffer = 20;
+                }
+            }
+
+            if (key_swap_buffer > 0) key_swap_buffer--;
+            if (key.carried_by != -1) {
+
+
+                Player *carrier = &players[key.carried_by];
+                float target_x = carrier->x - KEY_WIDTH / 2.0f;
+                float target_y = carrier->y - KEY_HEIGHT / 2.0f;
+                key.x += (target_x - key.x) * 0.10f;
+                key.y += (target_y - key.y) * 0.10f;
+            }
+
+
         }
 
 
@@ -515,13 +566,20 @@ int main(int argc, char **argv)
             if (death_timer <= 0) {
                 state = STATE_PLAYING;
                 death_timer = PLAYER_DEATH_TIME;
-                resetLevel(players, &camera_x, &LEVELS[current_level]);
+                resetLevel(players, &camera_x, &LEVELS[current_level], &key);
             }
         }
 
         // Update player position on screen based on camera
         // Keep below all player and collision updates
         updatePlayerPosition(players, camera_x);
+        // Update key position
+        float key_screen_x = key.x - (float)camera_x;
+        if (key_screen_x < -KEY_WIDTH || key_screen_x >= 256) {
+            NF_MoveSprite(0, key.sprite_id, 0, 192); // hide below screen to prevent OAM wrapping sprite
+        } else {
+            NF_MoveSprite(0, key.sprite_id, key_screen_x, key.y);
+        }
 
         // Copy data from NFLib OAM buffers to the real OAM, wait for VBlank
         NF_SpriteOamSet(0);

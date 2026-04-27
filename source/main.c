@@ -588,8 +588,6 @@ int main(int argc, char **argv)
                 if (p->in_door) {
                     if (keys_down & p->key_jump) {
                         p->in_door = false;
-                        p->x = (float)LEVELS[current_level].door_x;
-                        p->y = (float)LEVELS[current_level].door_y;
                     }
                     continue;
                 }

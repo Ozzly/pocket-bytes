@@ -480,9 +480,9 @@ void updatePlayerPosition(Player *players, float camera_x) {
     }
 }
 
-void updateObjectPosition(int sprite_id, float x, float y, float camera_x) {
+void updateObjectPosition(int sprite_id, float x, float y, int sprite_width, float camera_x) {
     float screen_x = x - camera_x;
-    if (screen_x < 0 || screen_x >= 256) {
+    if (screen_x + sprite_width < 0 || screen_x >= 256) {
         NF_MoveSprite(0, sprite_id, 0, 192); // hide below screen to prevent OAM wrapping sprite
     } else {
         NF_MoveSprite(0, sprite_id, screen_x, y);
@@ -669,9 +669,9 @@ int main(int argc, char **argv)
         if (key.door_unlocked) {
             NF_MoveSprite(0, key.sprite_id, 0, 192);
         } else {
-            updateObjectPosition(key.sprite_id, key.x, key.y, camera_x); 
+            updateObjectPosition(key.sprite_id, key.x, key.y, KEY_WIDTH, camera_x); 
         }
-        updateObjectPosition(5, LEVELS[current_level].door_x, LEVELS[current_level].door_y, camera_x); // door
+        updateObjectPosition(5, LEVELS[current_level].door_x, LEVELS[current_level].door_y, DOOR_WIDTH, camera_x); // door
         
         
 

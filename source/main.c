@@ -77,15 +77,34 @@ static const LevelConfig LEVELS[] = {
         .void_count = 2,
         .voids = {
             {
-                .left_x = 216,
+                .left_x = 210,
                 .right_x = 247,
                 .respawn_x = 168,
             },
             {
-                .left_x = 336,
+                .left_x = 330,
                 .right_x = 407,
                 .respawn_x = 290,
             }
+        },
+    },
+    {
+        .bg_name = "bg/level2",
+        .col_name = "collision/level2_col",
+        .width = 1024,
+        .spawn_x = { 40.0f, 60.0f, 80.0f },
+        .spawn_y = { 150.0f, 150.0f, 150.0f },
+        .key_spawn_x = 600,
+        .key_spawn_y = 72,
+        .door_x = 780,
+        .door_y = 145,
+        .void_count = 1,
+        .voids = {
+            {
+                .left_x = 460,
+                .right_x = 535,
+                .respawn_x = 416,
+            },
         },
     },
 };
@@ -167,6 +186,22 @@ void resetLevel(Player *players, float *camera_x, const LevelConfig *config, Key
 
     NF_SpriteFrame(0, 5, 0);
 } 
+
+void unloadLevel(void) {
+    NF_DeleteTiledBg(0, 3);
+    NF_UnloadTiledBg("level");
+    NF_UnloadCollisionBg(0);
+
+    NF_DeleteSprite(0, 4); // key
+    NF_FreeSpriteGfx(0, 1);
+    NF_UnloadSpriteGfx(1);
+    NF_UnloadSpritePal(4);
+
+    NF_DeleteSprite(0, 5);
+    NF_FreeSpriteGfx(0, 2);
+    NF_UnloadSpriteGfx(2);
+    NF_UnloadSpritePal(5);
+}
 
 // Helper functions
 bool overlaps(float ax, float ay, float aw, float ah, float bx, float by, float bw, float bh) {
@@ -667,6 +702,10 @@ int main(int argc, char **argv)
 
 
             if (isLevelComplete(players)) {
+                unloadLevel();
+
+                current_level++;
+                loadLevel(&LEVELS[current_level], &key);
                 resetLevel(players, &camera_x, &LEVELS[current_level], &key);
             }
         }

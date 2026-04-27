@@ -14,7 +14,9 @@ mv *.pal ../nitrofiles/sprite
 rm *.img
 
 $GRIT level1.png -ftB -fh! -gTFF00FF -gt -gB8 -mR8 -mLs
+$GRIT level2.png -ftB -fh! -gTFF00FF -gt -gB8 -mR8 -mLs
 mv *.pal *.img *.map ../nitrofiles/bg
 
 $GRIT level1_col.png -ftB -fh! -gt -gB8 -mRtp -mLf -p!
+$GRIT level2_col.png -ftB -fh! -gt -gB8 -mRtp -mLf -p!
 mv *.img *.map ../nitrofiles/collision

@@ -366,7 +366,7 @@ bool checkDoor(Player *players, Key *key, const LevelConfig *config) {
     if (!key->door_unlocked && key->carried_by != -1) {
         Player *carrier = &players[key->carried_by];
         // Check player overlaps door & presses up
-        if (carrier->jump_buffer > 0 && overlaps(carrier->x, carrier->y, PLAYER_WIDTH, PLAYER_HEIGHT, door_x, door_y, DOOR_WIDTH, DOOR_HEIGHT)) {
+        if (carrier->jump_buffer > 0 && overlaps(carrier->x, carrier->y, PLAYER_WIDTH, PLAYER_HEIGHT, door_x, door_y, DOOR_WIDTH, DOOR_HEIGHT) && carrier->standing_on == -1) {
             key->door_unlocked = true;
             carrier->in_door = true;
             carrier->jump_buffer = 0;
@@ -376,7 +376,7 @@ bool checkDoor(Player *players, Key *key, const LevelConfig *config) {
 
     if (key->door_unlocked) {
         for (int i=0; i < current_player_count; i++) {
-            if (!players[i].in_door && players[i].jump_buffer > 0 && overlaps(players[i].x, players[i].y, PLAYER_WIDTH, PLAYER_HEIGHT, door_x, door_y, DOOR_WIDTH, DOOR_HEIGHT)) {
+            if (!players[i].in_door && players[i].jump_buffer > 0 && overlaps(players[i].x, players[i].y, PLAYER_WIDTH, PLAYER_HEIGHT, door_x, door_y, DOOR_WIDTH, DOOR_HEIGHT) && players[i].standing_on == -1) {
                 players[i].in_door = true;
                 players[i].jump_buffer = 0;
             }

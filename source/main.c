@@ -140,6 +140,9 @@ void resetLevel(Player *players, float *camera_x, const LevelConfig *config, Key
     key->y = config->key_spawn_y;
     key->carried_by = -1;
     key->swap_buffer = 0;
+    key->door_unlocked = false;
+
+    NF_SpriteFrame(0, 5, 0);
 } 
 
 // Helper functions
@@ -367,6 +370,7 @@ bool checkDoor(Player *players, Key *key, const LevelConfig *config) {
             key->door_unlocked = true;
             carrier->in_door = true;
             carrier->jump_buffer = 0;
+            NF_SpriteFrame(0, 5, 1);
         }
     }
 
@@ -378,6 +382,8 @@ bool checkDoor(Player *players, Key *key, const LevelConfig *config) {
             }
         }
     }
+
+    
 }
 
 
@@ -483,6 +489,16 @@ void updateObjectPosition(int sprite_id, float x, float y, float camera_x) {
     }
 }
 
+bool isLevelComplete(Player *players) {
+    int players_in_door = 0;
+    for (int i = 0; i < current_player_count; i++) {
+        if (players[i].in_door) {
+            players_in_door++;
+        }
+    }
+    if (players_in_door == current_player_count) return true;
+    else return false;
+}
 
 int main(int argc, char **argv)
 {
@@ -530,10 +546,7 @@ int main(int argc, char **argv)
     NF_CreateSprite(0, 1, 0, 1, 160, 80);
     // NF_CreateSprite(0, 2, 0, 2, 140, 90);
 
-    
-
     Key key;
-
 
     // Set background color
     BG_PALETTE[0] = RGB15(31, 31, 31);
@@ -619,11 +632,12 @@ int main(int argc, char **argv)
 
             // Track interactions with the key & have the key follow the player
             keyPlayerTracking(players, &key);
-            
 
 
+            if (isLevelComplete(players)) {
+                resetLevel(players, &camera_x, &LEVELS[current_level], &key);
+            }
         }
-
 
 
         if (state == STATE_DYING) {
@@ -646,9 +660,11 @@ int main(int argc, char **argv)
             }
         }
 
+
         // Update player position on screen based on camera
         // Keep below all player and collision updates
         updatePlayerPosition(players, camera_x);
+
         // Update object positions relative to camera
         if (key.door_unlocked) {
             NF_MoveSprite(0, key.sprite_id, 0, 192);

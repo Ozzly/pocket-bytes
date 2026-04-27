@@ -358,7 +358,7 @@ void resolvePlayerPlayerCollision(Player *players) {
 }
 
 
-bool checkDoor(Player *players, Key *key, const LevelConfig *config) {
+void checkDoor(Player *players, Key *key, const LevelConfig *config) {
     int door_x = config->door_x;
     int door_y = config->door_y;
 

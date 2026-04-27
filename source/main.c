@@ -84,6 +84,7 @@ typedef struct {
     int standing_on;
     bool has_player_on_top;
     bool is_dead;
+    bool in_door;
 } Player;
 
 
@@ -92,6 +93,7 @@ typedef struct {
     int sprite_id;
     int carried_by; // -1 if not being carried
     int swap_buffer;
+    bool door_unlocked;
 } Key;
 
 
@@ -130,6 +132,7 @@ void resetLevel(Player *players, float *camera_x, const LevelConfig *config, Key
         players[i].standing_on = -1;
         players[i].has_player_on_top = false;
         players[i].is_dead = false;
+        players[i].in_door = false;
     }
     *camera_x = 0;
 
@@ -286,6 +289,8 @@ void resolvePlayerPlayerCollision(Player *players) {
             Player *a = &players[i];
             Player *b = &players[j];
 
+            if (a->in_door || b->in_door) continue; // skip collision if players in the door
+
             float a_left = a->x, a_top = a->y;
             float a_right = a->x + PLAYER_WIDTH, a_bottom = a->y + PLAYER_HEIGHT;
             float b_left = b->x, b_top = b->y;
@@ -348,6 +353,33 @@ void resolvePlayerPlayerCollision(Player *players) {
         }
     }
 }
+
+
+bool checkDoor(Player *players, Key *key, const LevelConfig *config) {
+    int door_x = config->door_x;
+    int door_y = config->door_y;
+
+    // Door not unlocked yet
+    if (!key->door_unlocked && key->carried_by != -1) {
+        Player *carrier = &players[key->carried_by];
+        // Check player overlaps door & presses up
+        if (carrier->jump_buffer > 0 && overlaps(carrier->x, carrier->y, PLAYER_WIDTH, PLAYER_HEIGHT, door_x, door_y, DOOR_WIDTH, DOOR_HEIGHT)) {
+            key->door_unlocked = true;
+            carrier->in_door = true;
+            carrier->jump_buffer = 0;
+        }
+    }
+
+    if (key->door_unlocked) {
+        for (int i=0; i < current_player_count; i++) {
+            if (!players[i].in_door && players[i].jump_buffer > 0 && overlaps(players[i].x, players[i].y, PLAYER_WIDTH, PLAYER_HEIGHT, door_x, door_y, DOOR_WIDTH, DOOR_HEIGHT)) {
+                players[i].in_door = true;
+                players[i].jump_buffer = 0;
+            }
+        }
+    }
+}
+
 
 void executeJumps(Player *players) {
     for (int i=0; i < current_player_count; i++) {
@@ -437,7 +469,8 @@ void keyPlayerTracking(Player *players, Key *key) {
 void updatePlayerPosition(Player *players, float camera_x) {
     for (int i =0; i < current_player_count; i++) {
         Player *p = &players[i];
-        NF_MoveSprite(0, p->sprite_id, p->x - camera_x - 4, p->y -4);
+        if (p->in_door) { NF_MoveSprite(0, p->sprite_id, 0, 192); }
+        else NF_MoveSprite(0, p->sprite_id, p->x - camera_x - 4, p->y -4);
     }
 }
 
@@ -507,6 +540,8 @@ int main(int argc, char **argv)
 
     Player players[MAX_PLAYERS];
     for (int i=0; i < current_player_count; i++) {
+        
+
         players[i].sprite_id = i;
         players[i].palette_id = i + 1;
         players[i].sprite_frame = 0;
@@ -548,6 +583,17 @@ int main(int argc, char **argv)
             // Player movement, collision (map), and sprite animation
             for (int i = 0; i < current_player_count; i++) {
                 Player *p = &players[i];
+
+                // Skip player in door, if they press up, leave the door
+                if (p->in_door) {
+                    if (keys_down & p->key_jump) {
+                        p->in_door = false;
+                        p->x = (float)LEVELS[current_level].door_x;
+                        p->y = (float)LEVELS[current_level].door_y;
+                    }
+                    continue;
+                }
+
                 updatePlayerInput(p, keys, keys_down);
                 updatePlayerPhysics(p);
                 resolvePlayerTileCollision(p); 
@@ -560,7 +606,10 @@ int main(int argc, char **argv)
             resetStackingInfo(players); 
             // Player to player collision
             resolvePlayerPlayerCollision(players);
-            // Jumping after resol;ving all collisions 
+
+            checkDoor(players, &key, LEVELS);
+
+            // Jumping after resolving all collisions
             executeJumps(players);
             // Player clamping to camera bounds
             playerClampToCamera(players, camera_x);
@@ -603,7 +652,11 @@ int main(int argc, char **argv)
         // Keep below all player and collision updates
         updatePlayerPosition(players, camera_x);
         // Update object positions relative to camera
-        updateObjectPosition(key.sprite_id, key.x, key.y, camera_x); // key
+        if (key.door_unlocked) {
+            NF_MoveSprite(0, key.sprite_id, 0, 192);
+        } else {
+            updateObjectPosition(key.sprite_id, key.x, key.y, camera_x); 
+        }
         updateObjectPosition(5, LEVELS[current_level].door_x, LEVELS[current_level].door_y, camera_x); // door
         
         

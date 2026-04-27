@@ -29,6 +29,8 @@
 #define COL_EMPTY 3
 #define COL_SPIKE 1
 
+#define MAX_VOIDS 4
+
 #define MAX_PLAYERS 4
 #define PLAYER_DEATH_TIME 90
 
@@ -42,6 +44,12 @@ typedef enum {
 GameState state = STATE_PLAYING;
 
 typedef struct {
+    int left_x;
+    int right_x;
+    int respawn_x;
+} Void;
+
+typedef struct {
     const char *bg_name;
     const char *col_name;
     int width;
@@ -51,6 +59,8 @@ typedef struct {
     int key_spawn_y;
     int door_x;
     int door_y;
+    Void voids[MAX_VOIDS];
+    int void_count;
 } LevelConfig;
 
 static const LevelConfig LEVELS[] = {
@@ -64,6 +74,19 @@ static const LevelConfig LEVELS[] = {
         .key_spawn_y = 72,
         .door_x = 780,
         .door_y = 145,
+        .void_count = 2,
+        .voids = {
+            {
+                .left_x = 216,
+                .right_x = 247,
+                .respawn_x = 168,
+            },
+            {
+                .left_x = 336,
+                .right_x = 407,
+                .respawn_x = 290,
+            }
+        },
     },
 };
 
@@ -171,7 +194,7 @@ void updatePlayerInput(Player *p, u16 keys, u16 keys_down) {
     if (p->jump_buffer > 0) p->jump_buffer--;
 }
 
-void updatePlayerPhysics(Player *p) {
+void updatePlayerPhysics(Player *p, const LevelConfig *config) {
     // Coyote frames to let player jump after leaving platform
     if (p->on_ground) {
         p->coyote_frames = COYOTE_TIME;
@@ -185,6 +208,15 @@ void updatePlayerPhysics(Player *p) {
 
     // Player wraps to top of screen if in void
     if (p->y > 192) {
+
+        for (int i=0; i < config->void_count; i++) {
+            Void voidZone = config->voids[i];
+            if (p->x >= voidZone.left_x && p->x <= voidZone.right_x) {
+                p->x = voidZone.respawn_x;
+                p->y = 0;
+            }
+        }
+
         p->y = -PLAYER_HEIGHT;
         p->on_ground = false;
         p->coyote_frames = 0;
@@ -382,8 +414,6 @@ void checkDoor(Player *players, Key *key, const LevelConfig *config) {
             }
         }
     }
-
-    
 }
 
 
@@ -606,7 +636,7 @@ int main(int argc, char **argv)
                 }
 
                 updatePlayerInput(p, keys, keys_down);
-                updatePlayerPhysics(p);
+                updatePlayerPhysics(p, &LEVELS[current_level]);
                 resolvePlayerTileCollision(p); 
                 updatePlayerSprite(p);
             }

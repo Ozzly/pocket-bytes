@@ -442,7 +442,7 @@ void playerClampToCamera(Player *players, float camera_x) {
     }
 }
 
-int getCameraPosition(Player *players) {
+int getCameraPosition(Player *players, int current) {
     float lead_x;
     float tail_x;
     for (int i=0; i < current_player_count; i++) {
@@ -461,6 +461,8 @@ int getCameraPosition(Player *players) {
         }
     }
 
+    if (desired - current > 2) desired = current + 2;
+    if (desired - current < -2) desired = current - 2;
     return desired;
 } 
 
@@ -655,7 +657,7 @@ int main(int argc, char **argv)
             // Player clamping to camera bounds
             playerClampToCamera(players, camera_x);
             // Camera follows players, but lets them walk to opposite ends of the screen 
-            camera_x = getCameraPosition(players);
+            camera_x = getCameraPosition(players, camera_x);
             NF_ScrollBg(0, 3, camera_x, 0);
             // Check spike collision after all movement and other collisions resolved
             resolvePlayerSpikeCollision(players);

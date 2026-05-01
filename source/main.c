@@ -65,6 +65,7 @@ typedef struct {
     bool on_ground;
     int sprite_id;
     GameObject object_on_top;
+    int object_on_top_id;
     GameObject standing_on;
     int standing_on_id;
 } Box;
@@ -171,6 +172,8 @@ typedef struct {
 
     GameObject standing_on;
     int standing_on_id;
+    GameObject object_on_top;
+    int object_on_top_id;
     bool has_player_on_top;
     bool is_dead;
     bool in_door;
@@ -228,6 +231,8 @@ void resetLevel(Player *players, float *camera_x, const LevelConfig *config, Key
         players[i].jump_buffer = 0;
         players[i].standing_on = NOTHING;
         players[i].standing_on_id = -1;
+        players[i].object_on_top = NOTHING;
+        players[i].object_on_top_id = -1;
         players[i].has_player_on_top = false;
         players[i].is_dead = false;
         players[i].in_door = false;
@@ -248,6 +253,9 @@ void resetLevel(Player *players, float *camera_x, const LevelConfig *config, Key
         boxes[i].push_required = config->boxes[i].push_required;
         boxes[i].standing_on = NOTHING;
         boxes[i].standing_on_id = -1;
+        boxes[i].sprite_id = 6 + i;
+        boxes[i].object_on_top = NOTHING;
+        boxes[i].object_on_top_id = -1;
     }
 } 
 
@@ -475,6 +483,22 @@ void updatePlayerSprite(Player *p) {
     }   
 }
 
+
+void propagateMoveUp(GameObject object_on_top, int object_on_top_id, float displacement, Player *players, Box *boxes) {
+    if (object_on_top == PLAYER) {
+        Player *rider = &players[object_on_top_id];
+        rider->x += displacement;
+        resolvePlayerHorizontalTileCollision(rider, displacement);
+        propagateMoveUp(rider->object_on_top, rider->object_on_top_id, displacement, players, boxes);
+    } else if (object_on_top == BOX) {
+        Box *above = &boxes[object_on_top_id - 6];
+        above->x += displacement;
+        resolveBoxHorizontalTileCollision(above, displacement);
+        propagateMoveUp(above->object_on_top, above->object_on_top_id, displacement, players, boxes);
+    }
+}
+
+
 void applyCarry(Player *players, float *prev_x, Box *boxes, float *prev_box_x) {
     for (int i = 0; i < current_player_count; i++) {
         if (players[i].standing_on == PLAYER) {
@@ -510,12 +534,15 @@ void resetStackingInfo(Player *players, Box *boxes) {
         players[i].standing_on = NOTHING;
         players[i].standing_on_id = -1;
         players[i].has_player_on_top = false;
+        players[i].object_on_top = NOTHING;
+        players[i].object_on_top_id = -1;
     }
 
     for (int i = 0; i < current_box_count; i++) {
         boxes[i].standing_on = NOTHING;
         boxes[i].standing_on_id = -1;
         boxes[i].object_on_top = NOTHING;
+        boxes[i].object_on_top_id = -1;
     }
 }
 
@@ -579,6 +606,8 @@ void resolvePlayerPlayerCollision(Player *players) {
                     a->standing_on_id = b->sprite_id;
                     a->standing_on = PLAYER;
                     b->has_player_on_top = true;
+                    b->object_on_top = PLAYER;
+                    b->object_on_top_id = a->sprite_id;
                 } else { // b is inside a, so move b up
                     b->y = (float)(a_top - PLAYER_HEIGHT + 1);
                     b->vel_y = 0;
@@ -586,6 +615,8 @@ void resolvePlayerPlayerCollision(Player *players) {
                     b->standing_on_id = a->sprite_id;
                     b->standing_on = PLAYER;
                     a->has_player_on_top = true;
+                    a->object_on_top = PLAYER;
+                    a->object_on_top_id = b->sprite_id;
                 }
             }
         }
@@ -626,6 +657,50 @@ void resolvePlayerBoxCollision(Player *players, Box *boxes) {
             ? a_bottom - b_top // a is above b so penetration is how much a's bottom edge overlaps b's top edge
             : -(b_bottom - a_top);
 
+            if (!(fabsf(penetration_x) <= fabsf(penetration_y)))  { // Smallest distance between box and player is foot to head
+                if (penetration_y > 0) { // player is inside box, so move player up
+                    a->y = (float)(b_top - PLAYER_HEIGHT + 1); // 1 pixel inside b to stick to b while they move
+                    a->vel_y = 0;
+                    a->on_ground = true;
+                    a->standing_on = BOX;
+                    a->standing_on_id = b->sprite_id;
+                    b->object_on_top = PLAYER;
+                    b->object_on_top_id = a->sprite_id;
+                } else { // b is inside a, so move b up
+                    b->y = (float)(a_top - PLAYER_HEIGHT + 1);
+                    b->vel_y = 0;
+                    b->on_ground = true;
+                    b->standing_on = PLAYER;
+                    b->standing_on_id = a->sprite_id;
+                    a->object_on_top = BOX;
+                    a->object_on_top_id = b->sprite_id;
+                }
+            }
+        }
+    }
+
+    for (int i = 0; i < current_player_count; i++) {
+        for (int j = 0; j < current_box_count; j++) {
+            Player *a = &players[i];
+            Box *b = &boxes[j];
+
+            if (a->in_door) continue; // skip collision if players in the door
+
+            float a_left = a->x, a_top = a->y;
+            float a_right = a->x + PLAYER_WIDTH, a_bottom = a->y + PLAYER_HEIGHT;
+            float b_left = b->x, b_top = b->y;
+            float b_right = b->x + BOX_WIDTH, b_bottom = b->y + BOX_HEIGHT;
+
+            if (a_right <= b_left || b_right <= a_left) continue; // No horizontal overlap
+            if (a_bottom <= b_top || b_bottom <= a_top) continue; // No vertical overlap
+
+            float penetration_x = a_left < b_left 
+            ? a_right - b_left // a is left of b so penetration is how much a's right edge overlaps b's left edge
+            : -(b_right - a_left); // negative - push a right, b left
+            float penetration_y = a_top < b_top // true if a is above b (as coords increase downwards) 
+            ? a_bottom - b_top // a is above b so penetration is how much a's bottom edge overlaps b's top edge
+            : -(b_bottom - a_top);
+
             if (fabsf(penetration_x) <= fabsf(penetration_y)) { // Smallest distance between box and player is horizontal
                 if (penetration_x > 0) { // player is left of box
                     
@@ -637,9 +712,11 @@ void resolvePlayerBoxCollision(Player *players, Box *boxes) {
                         bool player_blocked = boxBlockedByPlayer(new_x, b->y, b->sprite_id, players, i);
 
                         if (!tile_blocked && !player_blocked) {
+                            float displacement = new_x - b->x;
                             b->x = new_x;
 
-                                                    } else {
+                            propagateMoveUp(b->object_on_top, b->object_on_top_id, displacement, players, boxes);
+                        } else {
                             a->x = b->x - PLAYER_WIDTH - 0.01f;
                             a->vel_x = 0;
                         }
@@ -656,7 +733,9 @@ void resolvePlayerBoxCollision(Player *players, Box *boxes) {
                         bool player_blocked = boxBlockedByPlayer(new_x, b->y, b->sprite_id, players, i);
 
                         if (!tile_blocked && !player_blocked){
+                            float displacement = new_x - b->x;
                             b->x = new_x;
+                            propagateMoveUp(b->object_on_top, b->object_on_top_id, displacement, players, boxes);
 
                         } else {
                             a->x = b->x + BOX_WIDTH + 0.01f;
@@ -668,22 +747,6 @@ void resolvePlayerBoxCollision(Player *players, Box *boxes) {
                     }
                 }
 
-            } else { // Smallest distance between box and player is foot to head
-                if (penetration_y > 0) { // player is inside box, so move player up
-                    a->y = (float)(b_top - PLAYER_HEIGHT + 1); // 1 pixel inside b to stick to b while they move
-                    a->vel_y = 0;
-                    a->on_ground = true;
-                    a->standing_on = BOX;
-                    a->standing_on_id = b->sprite_id;
-                    // b->has_player_on_top = ;
-                } else { // b is inside a, so move b up
-                    b->y = (float)(a_top - PLAYER_HEIGHT + 1);
-                    b->vel_y = 0;
-                    b->on_ground = true;
-                    b->standing_on = PLAYER;
-                    b->standing_on_id = a->sprite_id;
-                    // a->has_player_on_top = true;
-                }
             }
         }
     }
@@ -942,7 +1005,10 @@ int main(int argc, char **argv)
 
                 updatePlayerInput(p, keys, keys_down);
                 updatePlayerPhysics(p, &LEVELS[current_level]);
+                float old_x = p->x;
                 resolvePlayerTileCollision(p); 
+                float displacement_x = p->x - old_x;
+                if (displacement_x != 0) propagateMoveUp(p->object_on_top, p->object_on_top_id, displacement_x, players, boxes);
                 updatePlayerSprite(p);
             }
 
@@ -950,12 +1016,15 @@ int main(int argc, char **argv)
                 Box *b = &boxes[i];
 
                 updateBoxPhysics(b, &LEVELS[current_level]);
+                float old_x = b->x;
                 resolveBoxTileCollision(b);
+                float displacement_x = b->x - old_x;
+                if (displacement_x != 0) propagateMoveUp(b->object_on_top, b->object_on_top_id, displacement_x, players, boxes);
             }
     
             // Apply carry from last frame's standing_on
-            applyBoxCarry(players, prev_x, boxes, prev_box_x);
-            applyCarry(players, prev_x, boxes, prev_box_x);
+            // applyBoxCarry(players, prev_x, boxes, prev_box_x);
+            // applyCarry(players, prev_x, boxes, prev_box_x);
             // Reset stacking info before checking player to player collision, freeing players from each other
             resetStackingInfo(players, boxes); 
             // Player to player collision

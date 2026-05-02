@@ -1,6 +1,7 @@
 #include "collisions.h"
 #include <math.h>
 #include "tilemap.h"
+#include <nf_lib.h>
 
 void propagateMoveUp(GameObject object_on_top, int object_on_top_id, float displacement, Player *players, Box *boxes) {
     if (object_on_top == PLAYER) {
@@ -185,10 +186,13 @@ void resolvePlayerBoxCollision(Player *players, Box *boxes) {
         }
     }
 
+    int best_pushers[MAX_BOXES] = {0};
+
     for (int i = 0; i < current_player_count; i++) {
         for (int j = 0; j < current_box_count; j++) {
             Player *a = &players[i];
             Box *b = &boxes[j];
+
 
             if (a->in_door) continue; // skip collision if players in the door
 
@@ -214,6 +218,9 @@ void resolvePlayerBoxCollision(Player *players, Box *boxes) {
 
                         bool visited[MAX_PLAYERS] = {false};
                         int pushers = countPushChain(i, 1.0f, players, visited);
+
+                        if (pushers > best_pushers[j]) best_pushers[j] = pushers;
+
                         if (pushers >= b->push_required) {
                             float new_x = b->x + penetration_x;
                             int int_new_x = (int)new_x;
@@ -246,6 +253,9 @@ void resolvePlayerBoxCollision(Player *players, Box *boxes) {
 
                         bool visited[MAX_PLAYERS] = {false};
                         int pushers = countPushChain(i, -1.0f, players, visited);
+
+                        if (pushers > best_pushers[j]) best_pushers[j] = pushers;
+
                         if (pushers >= b->push_required) {
                             float new_x = b->x + penetration_x;
                             int int_new_x = (int)new_x;
@@ -275,5 +285,11 @@ void resolvePlayerBoxCollision(Player *players, Box *boxes) {
 
             }
         }
+    }
+
+    for (int i=0; i < current_box_count; i++) {
+        int remaining = boxes[i].push_required - best_pushers[i];
+        if (remaining < 0) remaining = 0;
+        NF_SpriteFrame(0, boxes[i].sprite_id, remaining);
     }
 } 

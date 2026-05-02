@@ -127,6 +127,7 @@ void resetLevel(Player *players, float *camera_x, const LevelConfig *config, Key
         boxes[i].sprite_id = 6 + i;
         boxes[i].object_on_top = NOTHING;
         boxes[i].object_on_top_id = -1;
+        NF_SpriteFrame(0, 6, boxes[i].push_required);
     }
 } 
 

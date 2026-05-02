@@ -30,14 +30,7 @@ const LevelConfig LEVELS[] = {
                 .respawn_x = 290,
             }
         },
-        .box_count = 1,
-        .boxes = {
-            {
-                .spawn_x = 100,
-                .spawn_y = 10,
-                .push_required = 1,
-            },
-        },
+        
 
     },
     {
@@ -62,8 +55,8 @@ const LevelConfig LEVELS[] = {
         .boxes = {
             {
                 .spawn_x = 224,
-                .spawn_y = 160,
-                .push_required = 1,
+                .spawn_y = 140,
+                .push_required = 2,
             },
         },
     },

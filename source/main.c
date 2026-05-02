@@ -118,7 +118,7 @@ int main(int argc, char **argv)
     Box boxes[MAX_BOXES];
 
     float camera_x = 0;
-    int current_level = 0;
+    int current_level = 1;
     loadLevel(&LEVELS[current_level], &key);
     resetLevel(players, &camera_x, &LEVELS[current_level], &key, boxes);
 

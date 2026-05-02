@@ -111,6 +111,30 @@ bool boxBlockedByPlayer(float new_box_x, float box_y, int box_sprite_id, Player 
     return false;
 }
 
+static int countPushChain(int player_index, float push_dir, Player *players, bool *visited) {
+    visited[player_index] = true;
+    int count = 1;
+    Player *p = &players[player_index];
+
+    for (int k = 0; k < current_player_count; k++) {
+        if (visited[k] || players[k].in_door) continue;
+        Player *other = &players[k];
+
+        if (other->y + PLAYER_HEIGHT <= p->y || other->y >= p->y + PLAYER_HEIGHT) continue;
+
+        bool behind;
+        if (push_dir > 0) {
+            // other player is moving right into p, left of p, with its right edge being within 2 pixels of p's left edge
+            behind = other->vel_x > 0 && other->x < p->x && other->x + PLAYER_WIDTH >= p->x - 2;
+        } else {
+            behind = other->vel_x < 0 && other->x > p->x && other->x <= p->x + PLAYER_WIDTH + 2;
+        }
+
+        if (behind) count += countPushChain(k, push_dir, players, visited);
+    }
+    return count;
+}
+
 
 void resolvePlayerBoxCollision(Player *players, Box *boxes) {
  for (int i = 0; i < current_player_count; i++) {
@@ -187,21 +211,31 @@ void resolvePlayerBoxCollision(Player *players, Box *boxes) {
                 if (penetration_x > 0) { // player is left of box
                     
                     if (a->vel_x > 0) { // player is moving right into box, so move box
-                    
-                        float new_x = b->x + penetration_x;
-                        int int_new_x = (int)new_x;
-                        bool tile_blocked = isSolid(int_new_x + BOX_WIDTH, (int)b->y + 2) || isSolid(int_new_x + BOX_WIDTH, (int)b->y + BOX_HEIGHT - 2);
-                        bool player_blocked = boxBlockedByPlayer(new_x, b->y, b->sprite_id, players, i);
 
-                        if (!tile_blocked && !player_blocked) {
-                            float displacement = new_x - b->x;
-                            b->x = new_x;
+                        bool visited[MAX_PLAYERS] = {false};
+                        int pushers = countPushChain(i, 1.0f, players, visited);
+                        if (pushers >= b->push_required) {
+                            float new_x = b->x + penetration_x;
+                            int int_new_x = (int)new_x;
+                            bool tile_blocked = isSolid(int_new_x + BOX_WIDTH, (int)b->y + 2) || isSolid(int_new_x + BOX_WIDTH, (int)b->y + BOX_HEIGHT - 2);
+                            bool player_blocked = boxBlockedByPlayer(new_x, b->y, b->sprite_id, players, i);
 
-                            propagateMoveUp(b->object_on_top, b->object_on_top_id, displacement, players, boxes);
+                            if (!tile_blocked && !player_blocked) {
+                                float displacement = new_x - b->x;
+                                b->x = new_x;
+
+                                propagateMoveUp(b->object_on_top, b->object_on_top_id, displacement, players, boxes);
+                            } else {
+                                a->x = b->x - PLAYER_WIDTH - 0.01f;
+                                a->vel_x = 0;
+                            }
                         } else {
                             a->x = b->x - PLAYER_WIDTH - 0.01f;
                             a->vel_x = 0;
                         }
+
+
+                        
                         
                     
                     } else { // box moved into player from right, so push back box
@@ -209,20 +243,30 @@ void resolvePlayerBoxCollision(Player *players, Box *boxes) {
                     }
                 } else { // box is left of player
                     if (a->vel_x < 0) { // player walked left into box
-                        float new_x = b->x + penetration_x;
-                        int int_new_x = (int)new_x;
-                        bool tile_blocked = isSolid(int_new_x, (int)b->y + 2) || isSolid(int_new_x, (int)b->y + BOX_HEIGHT - 2);
-                        bool player_blocked = boxBlockedByPlayer(new_x, b->y, b->sprite_id, players, i);
 
-                        if (!tile_blocked && !player_blocked){
-                            float displacement = new_x - b->x;
-                            b->x = new_x;
-                            propagateMoveUp(b->object_on_top, b->object_on_top_id, displacement, players, boxes);
+                        bool visited[MAX_PLAYERS] = {false};
+                        int pushers = countPushChain(i, -1.0f, players, visited);
+                        if (pushers >= b->push_required) {
+                            float new_x = b->x + penetration_x;
+                            int int_new_x = (int)new_x;
+                            bool tile_blocked = isSolid(int_new_x, (int)b->y + 2) || isSolid(int_new_x, (int)b->y + BOX_HEIGHT - 2);
+                            bool player_blocked = boxBlockedByPlayer(new_x, b->y, b->sprite_id, players, i);
+    
+                            if (!tile_blocked && !player_blocked){
+                                float displacement = new_x - b->x;
+                                b->x = new_x;
+                                propagateMoveUp(b->object_on_top, b->object_on_top_id, displacement, players, boxes);
+    
+                            } else {
+                                a->x = b->x + BOX_WIDTH + 0.01f;
+                                a->vel_x = 0;
+                            }
 
                         } else {
                             a->x = b->x + BOX_WIDTH + 0.01f;
                             a->vel_x = 0;
                         }
+
 
                     } else { // box moved into player
                         b->x += -(penetration_x); 

@@ -1,9 +1,11 @@
 #ifndef LEVEL_TYPES_H
 #define LEVEL_TYPES_H
 
+
 #define MAX_PLAYERS 4
 #define MAX_VOIDS 4
 #define MAX_BOXES 4
+#define MAX_BUTTONS 4
 
 typedef struct
 {
@@ -17,6 +19,20 @@ typedef struct
     int spawn_x, spawn_y;
     int push_required;
 } BoxSpawn;
+
+typedef enum
+{
+    BUTTON_MOVE_PLATFORM,
+    BUTTON_KILL_PLAYERS,
+} ButtonType;
+
+
+typedef struct {
+    float x,y;
+    ButtonType type;
+    int target_id;
+    int platform_x, platform_y;
+} ButtonSpawn;
 
 typedef struct
 {
@@ -33,6 +49,8 @@ typedef struct
     int void_count;
     BoxSpawn boxes[MAX_BOXES];
     int box_count;
+    ButtonSpawn buttons[MAX_BUTTONS];
+    int button_count;
 } LevelConfig;
 
 extern const LevelConfig LEVELS[];

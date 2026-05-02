@@ -91,6 +91,7 @@ int main(int argc, char **argv)
     // NF_CreateSprite(0, 2, 0, 2, 140, 90);
 
     Key key;
+    Button buttons[MAX_BUTTONS];
 
     // Set background color
     BG_PALETTE[0] = RGB15(31, 31, 31);
@@ -118,9 +119,9 @@ int main(int argc, char **argv)
     Box boxes[MAX_BOXES];
 
     float camera_x = 0;
-    int current_level = 1;
+    int current_level = 0;
     loadLevel(&LEVELS[current_level], &key);
-    resetLevel(players, &camera_x, &LEVELS[current_level], &key, boxes);
+    resetLevel(players, &camera_x, &LEVELS[current_level], &key, boxes, buttons);
 
     int death_timer = PLAYER_DEATH_TIME;
 
@@ -196,6 +197,18 @@ int main(int argc, char **argv)
             // Track interactions with the key & have the key follow the player
             keyPlayerTracking(players, &key);
 
+            checkPlayerButtonOverlap(buttons, players);
+            updateButtons(buttons, players);
+
+            for (int i = 0; i < current_player_count; i++) {
+                if (players[i].is_dead) {
+                    state = STATE_DYING;
+
+                    NF_SpriteFrame(0, players[i].sprite_id, 6); // Set to death frame 
+                    players[i].vel_y = -6.0f; // death bounce
+                }
+            }
+
 
 
             if (isLevelComplete(players)) {
@@ -203,7 +216,7 @@ int main(int argc, char **argv)
 
                 current_level++;
                 loadLevel(&LEVELS[current_level], &key);
-                resetLevel(players, &camera_x, &LEVELS[current_level], &key, boxes);
+                resetLevel(players, &camera_x, &LEVELS[current_level], &key, boxes, buttons);
             }
         }
 
@@ -224,7 +237,7 @@ int main(int argc, char **argv)
             if (death_timer <= 0) {
                 state = STATE_PLAYING;
                 death_timer = PLAYER_DEATH_TIME;
-                resetLevel(players, &camera_x, &LEVELS[current_level], &key, boxes);
+                resetLevel(players, &camera_x, &LEVELS[current_level], &key, boxes, buttons);
             }
         }
 
@@ -240,7 +253,10 @@ int main(int argc, char **argv)
             updateObjectPosition(key.sprite_id, key.x, key.y, KEY_WIDTH, camera_x); 
         }
         updateObjectPosition(5, LEVELS[current_level].door_x, LEVELS[current_level].door_y, DOOR_WIDTH, camera_x); // door
-        updateObjectPosition(6, boxes[0].x, boxes[0].y, BOX_WIDTH, camera_x);
+        updateObjectPosition(6, boxes[0].x, boxes[0].y, BOX_WIDTH, camera_x); //box 0
+        for (int i=0; i < current_button_count; i++) {
+            updateObjectPosition(buttons[i].sprite_id, buttons[i].x, buttons[i].y, 16, camera_x);
+        }
         
         
 

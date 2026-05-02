@@ -156,10 +156,7 @@ void resolvePlayerSpikeCollision(Player *players) {
             NF_GetPoint(0, int_player_x + PLAYER_WIDTH / 2, int_player_y) == COL_SPIKE || // Head middle
             NF_GetPoint(0, int_player_x + PLAYER_WIDTH - 2, int_player_y) == COL_SPIKE // Head right
         ) {
-            state = STATE_DYING;
-            NF_SpriteFrame(0, p->sprite_id, 6); // Set to death frame
             p->is_dead = true; // track who died
-            p->vel_y = -6.0f; // death bounce
         }
     }
 }

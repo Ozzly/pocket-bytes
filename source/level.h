@@ -5,6 +5,7 @@
 #include "key.h"
 #include "player.h"
 #include "level_types.h"
+#include "button.h"
 
 
 
@@ -12,7 +13,7 @@
 
 
 void loadLevel(const LevelConfig *config, Key *key);
-void resetLevel(Player *players, float *camera_x, const LevelConfig *config, Key *key, Box *boxes);
+void resetLevel(Player *players, float *camera_x, const LevelConfig *config, Key *key, Box *boxes, Button *buttons);
 void unloadLevel(void);
 bool isLevelComplete(Player *players);
 void checkDoor(Player *players, Key *key, const LevelConfig *config);

@@ -30,6 +30,14 @@ const LevelConfig LEVELS[] = {
                 .respawn_x = 290,
             }
         },
+        .button_count = 1,
+        .buttons = {
+            {
+                .x = 100,
+                .y = 120,
+                .type = BUTTON_KILL_PLAYERS,
+            }
+        }
         
 
     },
@@ -88,10 +96,18 @@ void loadLevel(const LevelConfig *config, Key *key) {
     NF_VramSpritePal(0, 6, 6);
     NF_CreateSprite(0, 6, 3, 6, config->boxes[0].spawn_x, config->boxes[0].spawn_y);
 
+
+    NF_LoadSpriteGfx("sprite/button", 4, 16, 8);
+    NF_VramSpriteGfx(0, 4, 4, false);
+    NF_LoadSpritePal("sprite/button", 7);
+    NF_VramSpritePal(0, 7, 7);
+    NF_CreateSprite(0, 7, 4, 7, config->buttons[0].x, config->buttons[0].y);
+
     current_box_count = config->box_count;
+    current_button_count = config->button_count;
 }
 
-void resetLevel(Player *players, float *camera_x, const LevelConfig *config, Key *key, Box *boxes) {
+void resetLevel(Player *players, float *camera_x, const LevelConfig *config, Key *key, Box *boxes, Button *buttons) {
     for (int i=0; i < current_player_count; i++) {
         players[i].x = config->spawn_x[i];
         players[i].y = config->spawn_y[i];
@@ -128,6 +144,16 @@ void resetLevel(Player *players, float *camera_x, const LevelConfig *config, Key
         boxes[i].object_on_top = NOTHING;
         boxes[i].object_on_top_id = -1;
         NF_SpriteFrame(0, 6, boxes[i].push_required);
+    }
+
+    for (int i=0; i < config->button_count; i++) {
+        buttons[i].pressed = false;
+        buttons[i].x = config->buttons[i].x;
+        buttons[i].y = config->buttons[i].y;
+        buttons[i].sprite_id = 7 + i;
+        buttons[i].type = config->buttons[i].type;
+        buttons[i].triggered_by_id = -1;
+        NF_SpriteFrame(0, buttons[i].sprite_id, 0);
     }
 } 
 

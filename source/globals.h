@@ -24,5 +24,6 @@ extern GameState state;
 extern int current_player_count;
 extern int current_level_width;
 extern int current_box_count;
+extern int current_button_count;
 
 #endif

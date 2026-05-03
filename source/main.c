@@ -137,12 +137,9 @@ int main(int argc, char **argv)
             u16 keys = keysHeld();
             u16 keys_down = keysDown();
     
-            // Store previous player positions to apply carry movement (for people on top of moving players)
-            float prev_x[MAX_PLAYERS];
-            for (int i = 0; i < current_player_count; i++) prev_x[i] = players[i].x;
+            
 
-            float prev_box_x[MAX_BOXES];
-            for (int i = 0; i < current_box_count; i++) prev_box_x[i] = boxes[i].x;
+            
            
     
             // Player movement, collision (map), and sprite animation

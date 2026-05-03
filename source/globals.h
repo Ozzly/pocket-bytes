@@ -34,6 +34,7 @@ typedef enum
     NOTHING,
     PLAYER,
     BOX,
+    PLATFORM,
 } GameObject;
 
 typedef enum

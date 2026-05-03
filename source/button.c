@@ -8,6 +8,7 @@ void updateButtons(Button *buttons, Player *players, Platform *platforms) {
             buttons[i].hold_timer = buttons[i].hold_timer - 1;
             if (buttons[i].hold_timer <= 0) {
                 buttons[i].pressed = false;
+                if (buttons[i].type == BUTTON_MOVE_PLATFORM) platforms[buttons[i].target_id].active = false;
                 NF_SpriteFrame(0, buttons[i].sprite_id, 0);
             }
         }

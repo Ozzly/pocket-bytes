@@ -30,15 +30,15 @@ const LevelConfig LEVELS[] = {
                 .respawn_x = 290,
             }
         },
-        .button_count = 2,
+        .button_count = 1,
         .buttons = {
+            // {
+            //     .x = 100,
+            //     .y = 120,
+            //     .type = BUTTON_KILL_PLAYERS,
+            // }, 
             {
-                .x = 100,
-                .y = 120,
-                .type = BUTTON_KILL_PLAYERS,
-            }, 
-            {
-                .x = 432,
+                .x = 440,
                 .y = 170,
                 .type = BUTTON_MOVE_PLATFORM,
                 .target_id = 0,
@@ -49,11 +49,11 @@ const LevelConfig LEVELS[] = {
         .platforms = {
             {
                 .x = 404,
-                .y = 178,
+                .y = 177,
                 .width = 32,
                 .height = 8,
                 .speed = 1.0f,
-                .target_x = 360,
+                .target_x = 355,
                 .platfrom_id = 0,
 
             }

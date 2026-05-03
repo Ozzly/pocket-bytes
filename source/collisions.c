@@ -293,3 +293,88 @@ void resolvePlayerBoxCollision(Player *players, Box *boxes) {
         NF_SpriteFrame(0, boxes[i].sprite_id, remaining);
     }
 } 
+
+void resolvePlayerPlatformCollision(Player *players, Platform *platforms) {
+    for (int i=0; i < current_player_count; i++) {
+        Player *a = &players[i];
+        if (a->in_door) continue;
+
+        for (int j=0; j < current_platform_count; j++) {
+            Platform *b = &platforms[j];
+
+            float a_left = a->x, a_top = a->y;
+            float a_right = a->x + PLAYER_WIDTH, a_bottom = a->y + PLAYER_HEIGHT;
+            float b_left = b->x, b_top = b->y;
+            float b_right = b->x + b->width, b_bottom = b->y + b->height;
+
+            if (a_right <= b_left || b_right <= a_left) continue; // No horizontal overlap
+            if (a_bottom < b_top || b_bottom < a_top) continue; // No vertical overlap
+
+            float penetration_x = a_left < b_left 
+            ? a_right - b_left // a is left of b so penetration is how much a's right edge overlaps b's left edge
+            : -(b_right - a_left); // negative - push a right, b left
+            float penetration_y = a_top < b_top // true if a is above b (as coords increase downwards) 
+            ? a_bottom - b_top // a is above b so penetration is how much a's bottom edge overlaps b's top edge
+            : -(b_bottom - a_top);
+
+            if (fabsf(penetration_x) <= fabsf(penetration_y)) { // Smallest distance between plat and player is horizontal
+                if (penetration_x > 0) { // a is left of b
+                    // if (a->vel_x > 0 && b->vel_x < 0) { // a and b are walking into each other, so split the diff
+                    //     a->x -= penetration_x / 2.0f;
+                    //     b->x += penetration_x / 2.0f;
+                    //     a->vel_x = 0;
+                    //     b->vel_x = 0;
+                    // } else if (a->vel_x > 0) { // a is moving right into b, so push back a
+                        a->x -= penetration_x;
+                        a->vel_x = 0;
+                    // } else { // b walked left into a 
+                    //     b->x += penetration_x;
+                    //     b->vel_x = 0;    
+                    // }
+                } else { // b is left of a
+                    // if (b->vel_x > 0 && a->vel_x < 0) { // both walking into each other
+                    //     a->x += (-penetration_x) / 2.0f;
+                    //     b->x -= (-penetration_x) / 2.0f;
+                    //     a->vel_x = 0;
+                    //     b->vel_x = 0;
+                    // } else if (b->vel_x > 0) { // b walked right into a
+                    //     b->x -= (-penetration_x); // penetration_x is negative, so cancel out the negative to move b left
+                    // //     b->vel_x = 0;
+                    // } else { // a walked left into b
+                        a->x +=  (-penetration_x);
+                        a->vel_x = 0;
+                    // }
+                }
+
+            } else { // Smallest distance between 2 players is foot to head
+                if (a_top < b_top) {
+                    if (penetration_y >= 0) { // a is inside b, so move a up
+                        a->y = (float)(b_top - PLAYER_HEIGHT);
+                        a->vel_y = 0;
+                        a->on_ground = true;
+                        a->standing_on = PLATFORM;
+                        a->standing_on_id = b->sprite_id;
+                        b->object_on_top = PLAYER;
+                        b->object_on_top_id = a->sprite_id;
+
+                    }
+                } else { // b is inside a, 
+                    if (penetration_y <= 0) {
+                        a->y = (float)(b_bottom - PLAYER_HEIGHT);
+                        a->vel_y = 0;
+
+                        // b->y = (float)(a_top - PLAYER_HEIGHT);
+                        // b->vel_y = 0;
+                        // b->on_ground = true;
+                        // b->standing_on_id = a->sprite_id;
+                        // b->standing_on = PLAYER;
+                        // a->has_player_on_top = true;
+                        // a->object_on_top = PLAYER;
+                        // a->object_on_top_id = b->sprite_id;
+
+                    }
+                }
+            }
+        }
+    }
+}

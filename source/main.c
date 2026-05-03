@@ -26,7 +26,7 @@
 
 
 
-void resetStackingInfo(Player *players, Box *boxes) {
+void resetStackingInfo(Player *players, Box *boxes, Platform *platforms) {
     for (int i = 0; i < current_player_count; i++)  { 
         players[i].standing_on = NOTHING;
         players[i].standing_on_id = -1;
@@ -40,6 +40,11 @@ void resetStackingInfo(Player *players, Box *boxes) {
         boxes[i].standing_on_id = -1;
         boxes[i].object_on_top = NOTHING;
         boxes[i].object_on_top_id = -1;
+    }
+
+    for (int i = 0; i < current_platform_count; i++) {
+        platforms[i].object_on_top = NOTHING;
+        platforms[i].object_on_top_id = -1;
     }
 }
 
@@ -179,13 +184,19 @@ int main(int argc, char **argv)
             // applyBoxCarry(players, prev_x, boxes, prev_box_x);
             // applyCarry(players, prev_x, boxes, prev_box_x);
             // Reset stacking info before checking player to player collision, freeing players from each other
-            resetStackingInfo(players, boxes); 
+            resetStackingInfo(players, boxes, platforms); 
             // Player to player collision
             resolvePlayerPlayerCollision(players);
 
+            checkPlayerButtonOverlap(buttons, players);
+            updateButtons(buttons, players, platforms);
+
+            resolvePlayerPlatformCollision(players, platforms);
+            updatePlatforms(platforms, players, boxes);
             resolvePlayerBoxCollision(players, boxes);
 
             checkDoor(players, &key, LEVELS);
+
 
             // Jumping after resolving all collisions
             executeJumps(players);
@@ -200,8 +211,7 @@ int main(int argc, char **argv)
             // Track interactions with the key & have the key follow the player
             keyPlayerTracking(players, &key);
 
-            checkPlayerButtonOverlap(buttons, players);
-            updateButtons(buttons, players, platforms);
+            
 
             for (int i = 0; i < current_player_count; i++) {
                 if (players[i].is_dead) {

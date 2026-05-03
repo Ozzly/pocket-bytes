@@ -11,7 +11,7 @@ const LevelConfig LEVELS[] = {
         .bg_name = "bg/level1",
         .col_name = "collision/level1_col",
         .width = 1024,
-        .spawn_x = { 40.0f, 60.0f, 80.0f },
+        .spawn_x = { 60.0f, 80.0f, 100.0f },
         .spawn_y = { 150.0f, 150.0f, 150.0f },
         .key_spawn_x = 600,
         .key_spawn_y = 72,
@@ -77,31 +77,40 @@ void loadLevel(const LevelConfig *config, Key *key) {
     NF_CreateTiledBg(0, 3, "level");
     NF_LoadCollisionBg(config->col_name, 0, config->width, 256);
 
-    NF_LoadSpriteGfx("sprite/key", 1, 16, 32);
-    NF_VramSpriteGfx(0, 1, 1, false);
-    NF_LoadSpritePal("sprite/key", 4);
-    NF_VramSpritePal(0, 4, 4);
-    NF_CreateSprite(0, 4, 1, 4, 0, 0);
-    key->sprite_id = 4;
+    NF_LoadSpriteGfx("sprite/key", GFX_SLOT_KEY, 16, 32);
+    NF_VramSpriteGfx(0, GFX_SLOT_KEY, GFX_SLOT_KEY, false);
+    NF_LoadSpritePal("sprite/key", PAL_SLOT_KEY);
+    NF_VramSpritePal(0, PAL_SLOT_KEY, PAL_SLOT_KEY);
+    NF_CreateSprite(0, SPRITE_BASE_KEY, GFX_SLOT_KEY, PAL_SLOT_KEY, 0, 0);
+    key->sprite_id = SPRITE_BASE_KEY;
 
-    NF_LoadSpriteGfx("sprite/door", 2, 32, 32);
-    NF_VramSpriteGfx(0, 2, 2, false);
-    NF_LoadSpritePal("sprite/door", 5);
-    NF_VramSpritePal(0, 5, 5);
-    NF_CreateSprite(0, 5, 2, 5, 0, 0);
-
-    NF_LoadSpriteGfx("sprite/box", 3, 32, 32);
-    NF_VramSpriteGfx(0, 3, 3, false);
-    NF_LoadSpritePal("sprite/box", 6);
-    NF_VramSpritePal(0, 6, 6);
-    NF_CreateSprite(0, 6, 3, 6, config->boxes[0].spawn_x, config->boxes[0].spawn_y);
+    NF_LoadSpriteGfx("sprite/door", GFX_SLOT_DOOR, 32, 32);
+    NF_VramSpriteGfx(0, GFX_SLOT_DOOR, GFX_SLOT_DOOR, false);
+    NF_LoadSpritePal("sprite/door", PAL_SLOT_DOOR);
+    NF_VramSpritePal(0, PAL_SLOT_DOOR, PAL_SLOT_DOOR);
+    NF_CreateSprite(0, SPRITE_BASE_DOOR, GFX_SLOT_DOOR, PAL_SLOT_DOOR, 0, 0);
 
 
-    NF_LoadSpriteGfx("sprite/button", 4, 16, 8);
-    NF_VramSpriteGfx(0, 4, 4, false);
-    NF_LoadSpritePal("sprite/button", 7);
-    NF_VramSpritePal(0, 7, 7);
-    NF_CreateSprite(0, 7, 4, 7, config->buttons[0].x, config->buttons[0].y);
+    if (config->box_count > 0) {
+        NF_LoadSpriteGfx("sprite/box", GFX_SLOT_BOX, 32, 32);
+        NF_VramSpriteGfx(0, GFX_SLOT_BOX, GFX_SLOT_BOX, false);
+        NF_LoadSpritePal("sprite/box", PAL_SLOT_BOX);
+        NF_VramSpritePal(0, PAL_SLOT_BOX, PAL_SLOT_BOX);
+    }
+    for (int i=0; i < config->box_count; i++) {
+        NF_CreateSprite(0, SPRITE_BASE_BOX + i, GFX_SLOT_BOX, PAL_SLOT_BOX, config->boxes[i].spawn_x, config->boxes[i].spawn_y);
+    }
+
+
+
+
+    NF_LoadSpriteGfx("sprite/button", GFX_SLOT_BUTTON, 16, 8);
+    NF_VramSpriteGfx(0, GFX_SLOT_BUTTON, GFX_SLOT_BUTTON, false);
+    NF_LoadSpritePal("sprite/button", PAL_SLOT_BUTTON);
+    NF_VramSpritePal(0, PAL_SLOT_BUTTON, PAL_SLOT_BUTTON);
+    for (int i = 0; i < config->button_count; i++) {
+        NF_CreateSprite(0, SPRITE_BASE_BUTTON + i, GFX_SLOT_BUTTON, PAL_SLOT_BUTTON, config->buttons[i].x, config->buttons[i].y);
+    }
 
     current_box_count = config->box_count;
     current_button_count = config->button_count;
@@ -140,7 +149,7 @@ void resetLevel(Player *players, float *camera_x, const LevelConfig *config, Key
         boxes[i].push_required = config->boxes[i].push_required;
         boxes[i].standing_on = NOTHING;
         boxes[i].standing_on_id = -1;
-        boxes[i].sprite_id = 6 + i;
+        boxes[i].sprite_id = SPRITE_BASE_BOX + i;
         boxes[i].object_on_top = NOTHING;
         boxes[i].object_on_top_id = -1;
         NF_SpriteFrame(0, 6, boxes[i].push_required);
@@ -150,7 +159,7 @@ void resetLevel(Player *players, float *camera_x, const LevelConfig *config, Key
         buttons[i].pressed = false;
         buttons[i].x = config->buttons[i].x;
         buttons[i].y = config->buttons[i].y;
-        buttons[i].sprite_id = 7 + i;
+        buttons[i].sprite_id = SPRITE_BASE_BUTTON + i;
         buttons[i].type = config->buttons[i].type;
         buttons[i].triggered_by_id = -1;
         NF_SpriteFrame(0, buttons[i].sprite_id, 0);
@@ -163,20 +172,40 @@ void unloadLevel(void) {
     NF_UnloadTiledBg("level");
     NF_UnloadCollisionBg(0);
 
-    NF_DeleteSprite(0, 4); // key
-    NF_FreeSpriteGfx(0, 1);
-    NF_UnloadSpriteGfx(1);
-    NF_UnloadSpritePal(4);
+    // Unload key
+    NF_DeleteSprite(0, SPRITE_BASE_KEY);
+    NF_FreeSpriteGfx(0, GFX_SLOT_KEY);
+    NF_UnloadSpriteGfx(GFX_SLOT_KEY);
+    NF_UnloadSpritePal(PAL_SLOT_KEY);
 
-    NF_DeleteSprite(0, 5);
-    NF_FreeSpriteGfx(0, 2);
-    NF_UnloadSpriteGfx(2);
-    NF_UnloadSpritePal(5);
+    // Unload door
+    NF_DeleteSprite(0, SPRITE_BASE_DOOR);
+    NF_FreeSpriteGfx(0, GFX_SLOT_DOOR);
+    NF_UnloadSpriteGfx(GFX_SLOT_DOOR);
+    NF_UnloadSpritePal(PAL_SLOT_DOOR);
 
-    NF_DeleteSprite(0, 6);
-    NF_FreeSpriteGfx(0, 3);
-    NF_UnloadSpriteGfx(3);
-    NF_UnloadSpritePal(6);
+  
+    // Unload box
+    for (int i = 0; i < current_box_count; i++) {
+        NF_DeleteSprite(0, SPRITE_BASE_BOX + i);
+    }
+    if (current_box_count > 0) {
+        NF_FreeSpriteGfx(0, GFX_SLOT_BOX);
+        NF_UnloadSpriteGfx(GFX_SLOT_BOX);
+        NF_UnloadSpritePal(PAL_SLOT_BOX);
+
+    }
+    
+
+    // Unload Button
+    for (int i = 0; i < current_button_count; i++) {
+        NF_DeleteSprite(0, SPRITE_BASE_BUTTON + i);
+    }
+    NF_FreeSpriteGfx(0, GFX_SLOT_BUTTON);
+    NF_UnloadSpriteGfx(GFX_SLOT_BUTTON);
+    NF_UnloadSpritePal(PAL_SLOT_BUTTON);
+
+
 }
 
 

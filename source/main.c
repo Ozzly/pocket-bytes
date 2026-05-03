@@ -76,18 +76,18 @@ int main(int argc, char **argv)
     NF_LoadSpriteGfx("sprite/byte", 0, 32, 32);
     NF_VramSpriteGfx(0, 0, 0, false);
     
-    NF_LoadSpritePal("sprite/byte", 0);
-    NF_LoadSpritePal("sprite/byte-mauve", 1);
-    NF_LoadSpritePal("sprite/byte-saphire", 2);
+    NF_LoadSpritePal("sprite/byte", 2);
+    NF_LoadSpritePal("sprite/byte-mauve", 0);
+    NF_LoadSpritePal("sprite/byte-saphire", 1);
     NF_LoadSpritePal("sprite/byte-bone", 3);
-    NF_VramSpritePal(0, 0, 0); // green
-    NF_VramSpritePal(0, 1, 1); // mauve
-    NF_VramSpritePal(0, 2, 2); //saphire
-    NF_VramSpritePal(0, 3, 3); // bone
+    NF_VramSpritePal(0, 0, 0);
+    NF_VramSpritePal(0, 1, 1);
+    NF_VramSpritePal(0, 2, 2);
+    NF_VramSpritePal(0, 3, 3);
 
     // Create sprite instance
-    NF_CreateSprite(0, 0, 0, 3, 120, 80);
-    NF_CreateSprite(0, 1, 0, 1, 160, 80);
+    // NF_CreateSprite(0, 0, 0, 3, 120, 80);
+    // NF_CreateSprite(0, 1, 0, 1, 160, 80);
     // NF_CreateSprite(0, 2, 0, 2, 140, 90);
 
     Key key;
@@ -96,12 +96,17 @@ int main(int argc, char **argv)
     // Set background color
     BG_PALETTE[0] = RGB15(31, 31, 31);
 
+
+    int current_level = 0;
+
     Player players[MAX_PLAYERS];
     for (int i=0; i < current_player_count; i++) {
         players[i].sprite_id = i;
         players[i].palette_id = i + 1;
         players[i].sprite_frame = 0;
         players[i].sprite_frame_debounce = 0;
+
+        NF_CreateSprite(0, SPRITE_BASE_PLAYER + i, GFX_SLOT_PLAYER, PAL_SLOT_PLAYER_BASE + i, LEVELS[current_level].spawn_x[i], LEVELS[current_level].spawn_y[i]);
     }
 
     players[0].key_left = KEY_LEFT;
@@ -119,7 +124,6 @@ int main(int argc, char **argv)
     Box boxes[MAX_BOXES];
 
     float camera_x = 0;
-    int current_level = 0;
     loadLevel(&LEVELS[current_level], &key);
     resetLevel(players, &camera_x, &LEVELS[current_level], &key, boxes, buttons);
 

@@ -7,6 +7,7 @@
 #include "level.h"
 #include "collisions.h"
 #include "camera.h"
+#include "platform.h"
 
 
 
@@ -92,6 +93,7 @@ int main(int argc, char **argv)
 
     Key key;
     Button buttons[MAX_BUTTONS];
+    Platform platforms[MAX_PLATFORMS];
 
     // Set background color
     BG_PALETTE[0] = RGB15(31, 31, 31);
@@ -125,7 +127,7 @@ int main(int argc, char **argv)
 
     float camera_x = 0;
     loadLevel(&LEVELS[current_level], &key);
-    resetLevel(players, &camera_x, &LEVELS[current_level], &key, boxes, buttons);
+    resetLevel(players, &camera_x, &LEVELS[current_level], &key, boxes, buttons, platforms);
 
     int death_timer = PLAYER_DEATH_TIME;
 
@@ -199,7 +201,7 @@ int main(int argc, char **argv)
             keyPlayerTracking(players, &key);
 
             checkPlayerButtonOverlap(buttons, players);
-            updateButtons(buttons, players);
+            updateButtons(buttons, players, platforms);
 
             for (int i = 0; i < current_player_count; i++) {
                 if (players[i].is_dead) {
@@ -217,7 +219,7 @@ int main(int argc, char **argv)
 
                 current_level++;
                 loadLevel(&LEVELS[current_level], &key);
-                resetLevel(players, &camera_x, &LEVELS[current_level], &key, boxes, buttons);
+                resetLevel(players, &camera_x, &LEVELS[current_level], &key, boxes, buttons, platforms);
             }
         }
 
@@ -238,7 +240,7 @@ int main(int argc, char **argv)
             if (death_timer <= 0) {
                 state = STATE_PLAYING;
                 death_timer = PLAYER_DEATH_TIME;
-                resetLevel(players, &camera_x, &LEVELS[current_level], &key, boxes, buttons);
+                resetLevel(players, &camera_x, &LEVELS[current_level], &key, boxes, buttons, platforms);
             }
         }
 
@@ -257,6 +259,9 @@ int main(int argc, char **argv)
         updateObjectPosition(6, boxes[0].x, boxes[0].y, BOX_WIDTH, camera_x); //box 0
         for (int i=0; i < current_button_count; i++) {
             updateObjectPosition(buttons[i].sprite_id, buttons[i].x, buttons[i].y, 16, camera_x);
+        }
+        for (int i = 0; i < current_platform_count; i++) {
+            updateObjectPosition(platforms[i].sprite_id, platforms[i].x, platforms[i].y, platforms[i].width, camera_x);
         }
         
         

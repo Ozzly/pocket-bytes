@@ -1,11 +1,13 @@
 #ifndef LEVEL_TYPES_H
 #define LEVEL_TYPES_H
 
+#include <stdbool.h>
 
 #define MAX_PLAYERS 4
 #define MAX_VOIDS 4
 #define MAX_BOXES 4
 #define MAX_BUTTONS 4
+#define MAX_PLATFORMS 4
 
 typedef struct
 {
@@ -32,7 +34,17 @@ typedef struct {
     ButtonType type;
     int target_id;
     int platform_x, platform_y;
+    bool requires_hold;
 } ButtonSpawn;
+
+typedef struct {
+    int x, y;
+    int target_x;
+    float speed;
+    int width;
+    int height;
+    int platfrom_id;
+} PlatformSpawn;
 
 typedef struct
 {
@@ -51,6 +63,8 @@ typedef struct
     int box_count;
     ButtonSpawn buttons[MAX_BUTTONS];
     int button_count;
+    PlatformSpawn platforms[MAX_PLATFORMS];
+    int platform_count;
 } LevelConfig;
 
 extern const LevelConfig LEVELS[];

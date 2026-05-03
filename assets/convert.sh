@@ -7,6 +7,7 @@ $GRIT key.png -ftB -fh! -gTFF00FF -gt -gB8 -m!
 $GRIT door.png -ftB -fh! -gTFF00FF -gt -gB8 -m!
 $GRIT box.png -ftB -fh! -gTFF00FF -gt -gB8 -m!
 $GRIT button.png -ftB -fh! -gTFF00FF -gt -gB8 -m!
+$GRIT platform.png -ftB -fh! -gTFF00FF -gt -gB8 -m!
 
 mv *.pal *.img ../nitrofiles/sprite
 $GRIT byte-mauve.png -ftB -fh! -gTFF00FF -gt -gB8 -m!

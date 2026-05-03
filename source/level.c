@@ -30,12 +30,32 @@ const LevelConfig LEVELS[] = {
                 .respawn_x = 290,
             }
         },
-        .button_count = 1,
+        .button_count = 2,
         .buttons = {
             {
                 .x = 100,
                 .y = 120,
                 .type = BUTTON_KILL_PLAYERS,
+            }, 
+            {
+                .x = 432,
+                .y = 170,
+                .type = BUTTON_MOVE_PLATFORM,
+                .target_id = 0,
+                .requires_hold = true,
+            }
+        },
+        .platform_count = 1,
+        .platforms = {
+            {
+                .x = 404,
+                .y = 178,
+                .width = 32,
+                .height = 8,
+                .speed = 1.0f,
+                .target_x = 360,
+                .platfrom_id = 0,
+
             }
         }
         
@@ -112,11 +132,21 @@ void loadLevel(const LevelConfig *config, Key *key) {
         NF_CreateSprite(0, SPRITE_BASE_BUTTON + i, GFX_SLOT_BUTTON, PAL_SLOT_BUTTON, config->buttons[i].x, config->buttons[i].y);
     }
 
+
+    NF_LoadSpriteGfx("sprite/platform", GFX_SLOT_PLATFORM, 32, 8);
+    NF_VramSpriteGfx(0, GFX_SLOT_PLATFORM, GFX_SLOT_PLATFORM, false);
+    NF_LoadSpritePal("sprite/platform", PAL_SLOT_PLATFORM);
+    NF_VramSpritePal(0, PAL_SLOT_PLATFORM, PAL_SLOT_PLATFORM);
+    for (int i = 0; i < config->platform_count; i++) {
+        NF_CreateSprite(0, SPRITE_BASE_PLATFORM + i, GFX_SLOT_PLATFORM, PAL_SLOT_PLATFORM, config->platforms[i].x, config->platforms[i].y);
+    }
+
     current_box_count = config->box_count;
     current_button_count = config->button_count;
+    current_platform_count = config->platform_count;
 }
 
-void resetLevel(Player *players, float *camera_x, const LevelConfig *config, Key *key, Box *boxes, Button *buttons) {
+void resetLevel(Player *players, float *camera_x, const LevelConfig *config, Key *key, Box *boxes, Button *buttons, Platform *platforms) {
     for (int i=0; i < current_player_count; i++) {
         players[i].x = config->spawn_x[i];
         players[i].y = config->spawn_y[i];
@@ -162,7 +192,22 @@ void resetLevel(Player *players, float *camera_x, const LevelConfig *config, Key
         buttons[i].sprite_id = SPRITE_BASE_BUTTON + i;
         buttons[i].type = config->buttons[i].type;
         buttons[i].triggered_by_id = -1;
+        buttons[i].requires_hold = config->buttons[i].requires_hold;
+        buttons[i].hold_timer = 0;
         NF_SpriteFrame(0, buttons[i].sprite_id, 0);
+    }
+
+    for (int i = 0; i < config->platform_count; i++) {
+        platforms[i].active = false;
+        platforms[i].x = config->platforms[i].x;
+        platforms[i].y = config->platforms[i].y;
+        platforms[i].start_x = config->platforms[i].x;
+        platforms[i].target_x = config->platforms[i].target_x;
+        platforms[i].speed = config->platforms[i].speed;
+        platforms[i].width = config->platforms[i].width;
+        platforms[i].height = config->platforms[i].height;
+        platforms[i].sprite_id = SPRITE_BASE_PLATFORM + i;
+        platforms[i].platform_id = config->platforms[i].platfrom_id;
     }
 } 
 
@@ -204,6 +249,15 @@ void unloadLevel(void) {
     NF_FreeSpriteGfx(0, GFX_SLOT_BUTTON);
     NF_UnloadSpriteGfx(GFX_SLOT_BUTTON);
     NF_UnloadSpritePal(PAL_SLOT_BUTTON);
+
+
+    // Unload Platform
+    for (int i = 0; i < current_platform_count; i++) {
+        NF_DeleteSprite(0, SPRITE_BASE_PLATFORM + i);
+    }
+    NF_FreeSpriteGfx(0, GFX_SLOT_PLATFORM);
+    NF_UnloadSpriteGfx(GFX_SLOT_PLATFORM);
+    NF_UnloadSpritePal(PAL_SLOT_PLATFORM);
 
 
 }

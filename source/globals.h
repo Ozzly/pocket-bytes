@@ -9,18 +9,21 @@
 #define SPRITE_BASE_DOOR 5
 #define SPRITE_BASE_BOX 6 // 6-9
 #define SPRITE_BASE_BUTTON 10 // 10-13
+#define SPRITE_BASE_PLATFORM 14
 
 #define GFX_SLOT_PLAYER 0
 #define GFX_SLOT_KEY 1
 #define GFX_SLOT_DOOR 2
 #define GFX_SLOT_BOX 3
 #define GFX_SLOT_BUTTON 4
+#define GFX_SLOT_PLATFORM 5
 
 #define PAL_SLOT_PLAYER_BASE 0
 #define PAL_SLOT_KEY 4
 #define PAL_SLOT_DOOR 5
 #define PAL_SLOT_BOX 6
 #define PAL_SLOT_BUTTON 7
+#define PAL_SLOT_PLATFORM 8
 
 
 
@@ -44,5 +47,6 @@ extern int current_player_count;
 extern int current_level_width;
 extern int current_box_count;
 extern int current_button_count;
+extern int current_platform_count;
 
 #endif

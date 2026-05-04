@@ -75,20 +75,50 @@ const LevelConfig LEVELS[] = {
         .voids = {
             {
                 .left_x = 460,
-                .right_x = 535,
+                .right_x = 570,
                 .respawn_x = 416,
             },
         },
-        .box_count = 1,
+        .box_count = 2,
         .boxes = {
             {
                 .spawn_x = 224,
                 .spawn_y = 140,
                 .push_required = 2,
             },
+            {
+                .spawn_x = 368,
+                .spawn_y = 104,
+                .push_required = 1,
+            }
         },
+        .button_count = 1,
+        .buttons = {
+            {
+                .x = 608,
+                .y = 122,
+                .type = BUTTON_MOVE_PLATFORM,
+                .target_id = 0,
+                .requires_hold = true,
+            },
+
+        },
+
+        .platform_count = 1,
+        .platforms = {
+            {
+            .x = 560,
+            .y = 152,
+            .width = 32,
+            .height = 8,
+            .speed = 1.0f,
+            .target_x = 500,
+            .platfrom_id = 0,
+            },
+        }
     },
 };
+
 
 
 void loadLevel(const LevelConfig *config, Key *key) {

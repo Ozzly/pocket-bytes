@@ -266,14 +266,15 @@ int main(int argc, char **argv)
             updateObjectPosition(key.sprite_id, key.x, key.y, KEY_WIDTH, camera_x); 
         }
         updateObjectPosition(5, LEVELS[current_level].door_x, LEVELS[current_level].door_y, DOOR_WIDTH, camera_x); // door
-        updateObjectPosition(6, boxes[0].x, boxes[0].y, BOX_WIDTH, camera_x); //box 0
+        for (int i = 0; i < current_box_count; i++) {
+            updateObjectPosition(boxes[i].sprite_id, boxes[i].x, boxes[i].y, BOX_WIDTH, camera_x); //box 0
+        }
         for (int i=0; i < current_button_count; i++) {
             updateObjectPosition(buttons[i].sprite_id, buttons[i].x, buttons[i].y, 16, camera_x);
         }
         for (int i = 0; i < current_platform_count; i++) {
             updateObjectPosition(platforms[i].sprite_id, platforms[i].x, platforms[i].y, platforms[i].width, camera_x);
         }
-        
         
 
         // Copy data from NFLib OAM buffers to the real OAM, wait for VBlank

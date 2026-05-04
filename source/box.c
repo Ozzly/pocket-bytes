@@ -60,14 +60,14 @@ void resolveBoxTileCollision(Box *b) {
 
     if (b->vel_y >= 0) { // falling or standing still, check feet
         if (isSolid(int_box_x + 2, int_box_y + BOX_HEIGHT) || isSolid(int_box_x + BOX_WIDTH -2, int_box_y + BOX_HEIGHT) || isSolid(int_box_x + BOX_WIDTH / 2, int_box_y + BOX_HEIGHT)) {
-            b->y = (float)(((b->y + BOX_HEIGHT) / TILE) * TILE - BOX_HEIGHT);
+            b->y = (float)(((int_box_y + BOX_HEIGHT) / TILE) * TILE - BOX_HEIGHT);
             b->vel_y = 0;
             b->on_ground = true;
         }
     }
     if (b->vel_y < 0) { // rising, check head
         if (isSolid(int_box_x + 2, int_box_y) || isSolid(int_box_x + BOX_WIDTH -2, int_box_y)) {
-            b->y = (float)((b->y / TILE + 1) * TILE);
+            b->y = (float)((int_box_y / TILE + 1) * TILE);
             b->vel_y = 0;
         }
     }

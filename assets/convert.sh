@@ -16,6 +16,10 @@ $GRIT byte-bone.png -ftB -fh! -gTFF00FF -gt -gB8 -m!
 mv *.pal ../nitrofiles/sprite
 rm *.img
 
+$GRIT title-top.png -ftB -fh! -gTFF00FF -gt -gB8 -mR8 -mLs
+$GRIT select-mode-singleplayer.png -ftB -fh! -gTFF00FF -gt -gB8 -mR8 -mLs
+$GRIT select-mode-multiplayer.png -ftB -fh! -gTFF00FF -gt -gB8 -mR8 -mLs
+$GRIT select-mode-options.png -ftB -fh! -gTFF00FF -gt -gB8 -mR8 -mLs
 $GRIT level1.png -ftB -fh! -gTFF00FF -gt -gB8 -mR8 -mLs
 $GRIT level2.png -ftB -fh! -gTFF00FF -gt -gB8 -mR8 -mLs
 mv *.pal *.img *.map ../nitrofiles/bg

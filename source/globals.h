@@ -39,6 +39,9 @@ typedef enum
 
 typedef enum
 {
+    STATE_TITLE,
+    STATE_CHARACTER_SELECT,
+    STATE_LEVEL_SELECT,
     STATE_PLAYING,
     STATE_DYING,
 } GameState;

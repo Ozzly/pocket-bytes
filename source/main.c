@@ -131,13 +131,90 @@ int main(int argc, char **argv)
     Box boxes[MAX_BOXES];
 
     float camera_x = 0;
-    loadLevel(&LEVELS[current_level], &key);
-    resetLevel(players, &camera_x, &LEVELS[current_level], &key, boxes, buttons, platforms);
+    // loadLevel(&LEVELS[current_level], &key);
+    // resetLevel(players, &camera_x, &LEVELS[current_level], &key, boxes, buttons, platforms);
 
     int death_timer = PLAYER_DEATH_TIME;
+    bool entering_state = true;
+    
+    typedef enum {
+        SINGLEPLAYER,
+        MULTIPLAYER,
+        OPTIONS,
+    } MenuOption;
+
+    MenuOption menu_option = SINGLEPLAYER;
 
     while (1)
     {
+
+        if (state == STATE_TITLE) {
+            if (entering_state) {
+                NF_LoadTiledBg("bg/title-top", "title-top", 256, 256);
+                NF_CreateTiledBg(0, 3, "title-top");
+                NF_LoadTiledBg("bg/select-mode-singleplayer", "mode-singleplayer", 256, 256);
+                NF_LoadTiledBg("bg/select-mode-multiplayer", "mode-multiplayer", 256, 256);
+                NF_LoadTiledBg("bg/select-mode-options", "mode-options", 256, 256);
+                NF_CreateTiledBg(1, 2, "mode-options");
+                NF_CreateTiledBg(1, 1, "mode-multiplayer");
+                NF_CreateTiledBg(1, 0, "mode-singleplayer");
+                NF_HideBg(1, 1);
+                NF_HideBg(1, 2);
+
+                entering_state = false;
+            }
+
+            scanKeys();
+            u16 keys_down = keysDown();
+
+            MenuOption prev_option = menu_option;
+
+            if (keys_down & KEY_DOWN) {
+                if (menu_option == SINGLEPLAYER) {
+                    menu_option = MULTIPLAYER;
+                } else if (menu_option == MULTIPLAYER) {
+                    menu_option = OPTIONS;
+                }
+            } else if (keys_down & KEY_UP) {
+                if (menu_option == OPTIONS) {
+                    menu_option = MULTIPLAYER;
+                } else if (menu_option == MULTIPLAYER) {
+                    menu_option = SINGLEPLAYER;
+                }
+            } else if (keys_down & KEY_A) {
+                if (menu_option == SINGLEPLAYER) {
+                    current_player_count = 2;
+                    state = STATE_PLAYING;
+                    loadLevel(&LEVELS[current_level], &key);
+                    resetLevel(players, &camera_x, &LEVELS[current_level], &key, boxes, buttons, platforms);
+                } else if (menu_option == MULTIPLAYER) {
+                    current_player_count = 2;
+                } else if (menu_option == OPTIONS) {
+                }
+
+            }
+
+            if (menu_option != prev_option) {
+                switch (menu_option) {
+                    case SINGLEPLAYER:
+                        NF_ShowBg(1, 0);
+                        NF_HideBg(1, 1);
+                        NF_HideBg(1, 2);
+                        break;
+                    case MULTIPLAYER:
+                        NF_ShowBg(1, 1);
+                        NF_HideBg(1, 0);
+                        NF_HideBg(1, 2);
+                        break;
+                    case OPTIONS:
+                        NF_ShowBg(1, 2);
+                        NF_HideBg(1, 0);
+                        NF_HideBg(1, 1);
+                        break;
+                }
+            }
+        }
+
         if (state == STATE_PLAYING) {
             // Read keypad
             scanKeys();
@@ -257,34 +334,36 @@ int main(int argc, char **argv)
 
         // Update player position on screen based on camera
         // Keep below all player and collision updates
-        updatePlayerPosition(players, camera_x);
 
-        // Update object positions relative to camera
-        if (key.door_unlocked) { // key
-            NF_MoveSprite(0, key.sprite_id, 0, 192);
-        } else {
-            updateObjectPosition(key.sprite_id, key.x, key.y, KEY_WIDTH, camera_x); 
+        if (state == STATE_PLAYING || state == STATE_DYING) {
+            updatePlayerPosition(players, camera_x);
+    
+            // Update object positions relative to camera
+            if (key.door_unlocked) { // key
+                NF_MoveSprite(0, key.sprite_id, 0, 192);
+            } else {
+                updateObjectPosition(key.sprite_id, key.x, key.y, KEY_WIDTH, camera_x); 
+            }
+            updateObjectPosition(5, LEVELS[current_level].door_x, LEVELS[current_level].door_y, DOOR_WIDTH, camera_x); // door
+            for (int i = 0; i < current_box_count; i++) {
+                updateObjectPosition(boxes[i].sprite_id, boxes[i].x, boxes[i].y, BOX_WIDTH, camera_x); //box 0
+            }
+            for (int i=0; i < current_button_count; i++) {
+                updateObjectPosition(buttons[i].sprite_id, buttons[i].x, buttons[i].y, 16, camera_x);
+            }
+            for (int i = 0; i < current_platform_count; i++) {
+                updateObjectPosition(platforms[i].sprite_id, platforms[i].x, platforms[i].y, platforms[i].width, camera_x);
+            }
+            
+    
+            // Copy data from NFLib OAM buffers to the real OAM, wait for VBlank
+            NF_SpriteOamSet(0);
+            NF_SpriteOamSet(1);
+            oamUpdate(&oamMain);
+            oamUpdate(&oamSub);
         }
-        updateObjectPosition(5, LEVELS[current_level].door_x, LEVELS[current_level].door_y, DOOR_WIDTH, camera_x); // door
-        for (int i = 0; i < current_box_count; i++) {
-            updateObjectPosition(boxes[i].sprite_id, boxes[i].x, boxes[i].y, BOX_WIDTH, camera_x); //box 0
-        }
-        for (int i=0; i < current_button_count; i++) {
-            updateObjectPosition(buttons[i].sprite_id, buttons[i].x, buttons[i].y, 16, camera_x);
-        }
-        for (int i = 0; i < current_platform_count; i++) {
-            updateObjectPosition(platforms[i].sprite_id, platforms[i].x, platforms[i].y, platforms[i].width, camera_x);
-        }
-        
 
-        // Copy data from NFLib OAM buffers to the real OAM, wait for VBlank
-        NF_SpriteOamSet(0);
-        NF_SpriteOamSet(1);
-        // Wait for the screen refresh
         swiWaitForVBlank();
-        // Actually update the OAM
-        oamUpdate(&oamMain);
-        oamUpdate(&oamSub);
     }
 
     // If this is reached, the program will return to the loader if the loader

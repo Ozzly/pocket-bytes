@@ -144,11 +144,14 @@ int main(int argc, char **argv)
     } MenuOption;
 
     MenuOption menu_option = SINGLEPLAYER;
+    touchPosition touch_pos;
 
     while (1)
     {
 
         if (state == STATE_TITLE) {
+
+            // Setup title screen on 1st load
             if (entering_state) {
                 NF_LoadTiledBg("bg/title-top", "title-top", 256, 256);
                 NF_CreateTiledBg(0, 3, "title-top");
@@ -166,9 +169,31 @@ int main(int argc, char **argv)
 
             scanKeys();
             u16 keys_down = keysDown();
+            u16 keys_held = keysHeld();
+            bool option_selected = false;
 
+            // Track option change for bg updates
             MenuOption prev_option = menu_option;
 
+            // Check touch screen input
+            if (keys_held & KEY_TOUCH) {
+                touchRead(&touch_pos);
+
+                if (touch_pos.px > 31 && touch_pos.px < 224) {
+                    if (touch_pos.py >= 24 && touch_pos.py <= 58) {
+                        menu_option = SINGLEPLAYER;
+                        option_selected = true;
+                    } else if (touch_pos.py >= 72 && touch_pos.py <= 106) {
+                        menu_option = MULTIPLAYER;
+                        option_selected = true;
+                    } else if (touch_pos.py >= 120 && touch_pos.py <= 154) {
+                        menu_option = OPTIONS;
+                        option_selected = true;
+                    }
+                }
+            }
+
+            // Key inputs
             if (keys_down & KEY_DOWN) {
                 if (menu_option == SINGLEPLAYER) {
                     menu_option = MULTIPLAYER;
@@ -182,18 +207,10 @@ int main(int argc, char **argv)
                     menu_option = SINGLEPLAYER;
                 }
             } else if (keys_down & KEY_A) {
-                if (menu_option == SINGLEPLAYER) {
-                    current_player_count = 2;
-                    state = STATE_PLAYING;
-                    loadLevel(&LEVELS[current_level], &key);
-                    resetLevel(players, &camera_x, &LEVELS[current_level], &key, boxes, buttons, platforms);
-                } else if (menu_option == MULTIPLAYER) {
-                    current_player_count = 2;
-                } else if (menu_option == OPTIONS) {
-                }
-
+                option_selected = true; 
             }
 
+            // Change selected option through switching bg images
             if (menu_option != prev_option) {
                 switch (menu_option) {
                     case SINGLEPLAYER:
@@ -213,7 +230,21 @@ int main(int argc, char **argv)
                         break;
                 }
             }
+
+            // Select option
+            if (option_selected) {
+                if (menu_option == SINGLEPLAYER) {
+                    current_player_count = 2;
+                    state = STATE_PLAYING;
+                    loadLevel(&LEVELS[current_level], &key);
+                    resetLevel(players, &camera_x, &LEVELS[current_level], &key, boxes, buttons, platforms);
+                } else if (menu_option == MULTIPLAYER) {
+                    current_player_count = 2;
+                } else if (menu_option == OPTIONS) {
+                }
+            }
         }
+        
 
         if (state == STATE_PLAYING) {
             // Read keypad

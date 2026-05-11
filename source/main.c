@@ -8,15 +8,7 @@
 #include "collisions.h"
 #include "camera.h"
 #include "platform.h"
-
-
-
-
-
-
-
-
-
+#include "title_screen.h"
 
 #define COL_EMPTY 3
 #define PLAYER_DEATH_TIME 90
@@ -137,8 +129,11 @@ int main(int argc, char **argv)
                 NF_HideBg(1, 1);
                 NF_HideBg(1, 2);
 
+                createDemoPlayers();
+
                 entering_state = false;
             }
+            updateDemoPlayers();
 
             scanKeys();
             u16 keys_down = keysDown();
@@ -385,13 +380,13 @@ int main(int argc, char **argv)
             }
             
     
-            // Copy data from NFLib OAM buffers to the real OAM, wait for VBlank
-            NF_SpriteOamSet(0);
-            NF_SpriteOamSet(1);
-            oamUpdate(&oamMain);
-            oamUpdate(&oamSub);
         }
-
+        
+        // Copy data from NFLib OAM buffers to the real OAM, wait for VBlank
+        NF_SpriteOamSet(0);
+        NF_SpriteOamSet(1);
+        oamUpdate(&oamMain);
+        oamUpdate(&oamSub);
         swiWaitForVBlank();
     }
 

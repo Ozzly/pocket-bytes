@@ -1,6 +1,6 @@
 #include "globals.h"
 #include <nf_lib.h>
-#define COL_SOLID 2
+#define COL_SOLID 0
 
 bool isSolid(int x, int y) {
     if (y >= 192 || y < 0) return false;

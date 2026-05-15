@@ -26,4 +26,5 @@ mv *.pal *.img *.map ../nitrofiles/bg
 
 $GRIT level1_col.png -ftB -fh! -gt -gB8 -mRtp -mLf -p!
 $GRIT level2_col.png -ftB -fh! -gt -gB8 -mRtp -mLf -p!
+$GRIT title-top-col.png -ftB -fh! -gt -gB8 -mRtp -mLf -p!
 mv *.img *.map ../nitrofiles/collision

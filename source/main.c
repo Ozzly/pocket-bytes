@@ -120,6 +120,8 @@ int main(int argc, char **argv)
             if (entering_state) {
                 NF_LoadTiledBg("bg/title-top", "title-top", 256, 256);
                 NF_CreateTiledBg(0, 3, "title-top");
+                NF_LoadCollisionBg("collision/title-top-col", 0, 256, 200);
+                current_level_width = 256;
                 NF_LoadTiledBg("bg/select-mode-singleplayer", "mode-singleplayer", 256, 256);
                 NF_LoadTiledBg("bg/select-mode-multiplayer", "mode-multiplayer", 256, 256);
                 NF_LoadTiledBg("bg/select-mode-options", "mode-options", 256, 256);

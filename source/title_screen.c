@@ -2,36 +2,24 @@
 #include <nf_lib.h>
 #include "globals.h"
 #include "player.h"
+#include "collisions.h"
+#include "key.h"
 #define DEMO_PLAYER_COUNT 3
 #define SPRITE_BASE_DEMO 30
 
 static const DemoKeyFrame SCRIPT_0[] = {
-    {DEMO_WALK_RIGHT, 60},
-    // {DEMO_JUMP, 30},
-    {DEMO_WALK_RIGHT, 60},
-    {DEMO_IDLE, 30},
-    {DEMO_WALK_LEFT, 60},
-    // {DEMO_JUMP, 30},
-    {DEMO_WALK_LEFT, 60},
-    {DEMO_IDLE, 30},
+    {DEMO_IDLE, 250},
+    {DEMO_JUMP, 1},
 };
 
 static const DemoKeyFrame SCRIPT_1[] = {
-    {DEMO_WALK_LEFT, 60},
-    // {DEMO_JUMP, 30},
-    {DEMO_WALK_LEFT, 60},
-    {DEMO_IDLE, 30},
-    {DEMO_WALK_RIGHT, 60},
-    // {DEMO_JUMP, 30},
-    {DEMO_WALK_RIGHT, 60},
-    {DEMO_IDLE, 30},
+    {DEMO_IDLE, 330},
+    {DEMO_JUMP, 1},
 };
 
 static const DemoKeyFrame SCRIPT_2[] = {
-    {DEMO_STAND_ON_PLAYER, 120},
-    {DEMO_IDLE, 60},
-    {DEMO_STAND_ON_PLAYER, 120},
-    {DEMO_IDLE, 60},
+    {DEMO_IDLE, 199},
+    {DEMO_JUMP, 1},   
 };
 
 typedef struct {
@@ -42,15 +30,15 @@ typedef struct {
 } DemoScript;
 
 static DemoScript scripts[DEMO_PLAYER_COUNT] = {
-    { .frames = SCRIPT_0, .length = 6 },
-    { .frames = SCRIPT_1, .length = 6 },
-    { .frames = SCRIPT_2, .length = 4 },
+    { .frames = SCRIPT_0, .length = 2 },
+    { .frames = SCRIPT_1, .length = 2 },
+    { .frames = SCRIPT_2, .length = 2 },
 };
 
 Player demo_players[DEMO_PLAYER_COUNT] = {
     {
-        .x = 50.0f,
-        .y = 120.0f,
+        .x = 60.0f,
+        .y = 140.0f,
         .vel_x = 0.0f,
         .vel_y = 0.0f,
         .sprite_id = -1,
@@ -58,8 +46,8 @@ Player demo_players[DEMO_PLAYER_COUNT] = {
         .on_ground = false,
     },
     {
-        .x = 100.0f,
-        .y = 120.0f,
+        .x = 140.0f,
+        .y = 140.0f,
         .vel_x = 0.0f,
         .vel_y = 0.0f,
         .sprite_id = -1,
@@ -67,8 +55,8 @@ Player demo_players[DEMO_PLAYER_COUNT] = {
         .on_ground = false,
     },
     {
-        .x = 150.0f,
-        .y = 120.0f,
+        .x = 220.0f,
+        .y = 70.0f,
         .vel_x = 0.0f,
         .vel_y = 0.0f,
         .sprite_id = -1,
@@ -76,6 +64,15 @@ Player demo_players[DEMO_PLAYER_COUNT] = {
         .on_ground = false,
     }
 };
+
+// Key demo_key = {
+//     .x = 234.0f,
+//     .y = 75.0f,
+//     .sprite_id = 4,
+//     .carried_by = -1,
+//     .swap_buffer = 0,
+//     .door_unlocked = false,    
+// };
 
 void createDemoPlayers() {
     NF_LoadSpritePal("sprite/byte", 2);
@@ -109,9 +106,13 @@ const LevelConfig demoLevelConfig = {
     .col_name = "collision/title-top-col",
     .width = 256,
     .void_count = 0,
+
 };
 
 void updateDemoPlayers() {
+    
+
+
     for (int i = 0; i < DEMO_PLAYER_COUNT; i++) {
         Player *p = &demo_players[i];
         DemoScript *s = &scripts[i];
@@ -132,13 +133,29 @@ void updateDemoPlayers() {
             case DEMO_WALK_LEFT:
                 p->vel_x = -MAX_WALK;
                 break;
+            case DEMO_IDLE:
+                p->vel_x = 0;
+                break;
             case DEMO_JUMP:
                 p->vel_y = -4.7f;
+                break;
+            case DEMO_JUMP_RIGHT:
+                p->vel_y = -4.7f;
+                p->vel_x = MAX_WALK;
+                break;
+            case DEMO_JUMP_LEFT:
+                p->vel_y = -4.7f;
+                p->vel_x = -MAX_WALK;
                 break;
         }
 
         updatePlayerPhysics(p, &demoLevelConfig);
+        float old_x = p->x;
         resolvePlayerTileCollision(p);
+        float displacement_x = p->x - old_x;
+        if (displacement_x != 0) propagateMoveUp(p->object_on_top, p->object_on_top_id, displacement_x, demo_players, NULL);
+        if (p->vel_x > 0) NF_HflipSprite(0, p->sprite_id, false);
+        else if (p->vel_x < 0) NF_HflipSprite(0, p->sprite_id, true);
         updatePlayerSprite(p);
 
 
@@ -147,8 +164,29 @@ void updateDemoPlayers() {
 
     executeJumps(demo_players);
 
+    // Reset stacking info
+    for (int i =0; i < DEMO_PLAYER_COUNT; i++) {
+        demo_players[i].standing_on = NOTHING;
+        demo_players[i].standing_on_id = -1;
+        demo_players[i].has_player_on_top = false;
+        demo_players[i].object_on_top = NOTHING;
+        demo_players[i].object_on_top_id = -1;
+    }
 
+    resolvePlayerPlayerCollision(demo_players);
 }
+
+void initDemoKey() {
+    NF_LoadSpriteGfx("sprite/key", GFX_SLOT_KEY, 16, 32);
+    NF_VramSpriteGfx(0, GFX_SLOT_KEY, GFX_SLOT_KEY, false);
+    NF_LoadSpritePal("sprite/key", PAL_SLOT_KEY);
+    NF_VramSpritePal(0, PAL_SLOT_KEY, PAL_SLOT_KEY);
+    // NF_CreateSprite(0, demo_key.sprite_id, GFX_SLOT_KEY, PAL_SLOT_KEY, (int)demo_key.x, (int)demo_key.y);
+}
+
+// void updateDemoKey() {
+//     keyPlayerTracking(demo_players, &demo_key);
+// }
 
 void unloadTitleScreen() {
     NF_UnloadTiledBg("title-top");
@@ -168,4 +206,9 @@ void unloadTitleScreen() {
     for (int i = 0; i < DEMO_PLAYER_COUNT; i++) {
         NF_DeleteSprite(0, demo_players[i].sprite_id);
     }
+
+    // NF_DeleteSprite(0, demo_key.sprite_id);
+    NF_FreeSpriteGfx(0, GFX_SLOT_KEY);
+    NF_UnloadSpriteGfx(GFX_SLOT_KEY);
+    NF_UnloadSpritePal(PAL_SLOT_KEY);
 }

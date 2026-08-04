@@ -132,10 +132,12 @@ int main(int argc, char **argv)
                 NF_HideBg(1, 2);
 
                 createDemoPlayers();
+                // initDemoKey();
 
                 entering_state = false;
             }
             updateDemoPlayers();
+            // updateDemoKey();
 
             scanKeys();
             u16 keys_down = keysDown();

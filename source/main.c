@@ -62,6 +62,12 @@ int main(int argc, char **argv)
     NF_InitTiledBgSys(1);
     NF_InitCmapBuffers();
 
+    // Init Text
+    NF_InitTextSys(1);
+    // Load Font
+    
+    
+
     // Init sprites
     NF_InitSpriteBuffers();
     NF_InitSpriteSys(0);
@@ -208,13 +214,42 @@ int main(int argc, char **argv)
                 entering_state = true;
                 if (menu_option == SINGLEPLAYER) {
                     current_player_count = 2;
-                    state = STATE_PLAYING;
-                    unloadTitleScreen();
+                    state = STATE_SINGLEPLAYER_COLOR_SELECT;
+
+                    // Unload bottom background
+                    NF_UnloadTiledBg("mode-singleplayer");
+                    NF_UnloadTiledBg("mode-multiplayer");
+                    NF_UnloadTiledBg("mode-options");
+                    NF_DeleteTiledBg(1, 0);
+                    NF_DeleteTiledBg(1, 1);
+                    NF_DeleteTiledBg(1, 2); 
+
                 } else if (menu_option == MULTIPLAYER) {
                     current_player_count = 2;
                 } else if (menu_option == OPTIONS) {
                 }
             }
+        }
+
+        if (state == STATE_SINGLEPLAYER_COLOR_SELECT) {
+            if (entering_state) {
+                // Load background
+                NF_LoadTiledBg("bg/player-color-select", "player-color-select", 256, 256);
+                NF_CreateTiledBg(1, 3, "player-color-select");
+
+                // Load font
+                NF_LoadTextFont("font/default", "normal", 256, 256, 0);
+                NF_CreateTextLayer(1, 0, 0, "normal");
+
+                // Set font color
+                NF_DefineTextColor(1, 0, 1, 0, 0, 0); // black
+                NF_SetTextColor(1, 0, 1);
+
+                entering_state = false;
+            }
+
+            NF_WriteText(1, 0, 4, 5, "Select Player 1's Color");
+            NF_UpdateTextLayers();
         }
 
 

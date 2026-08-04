@@ -29,3 +29,6 @@ $GRIT level1_col.png -ftB -fh! -gt -gB8 -mRtp -mLf -p!
 $GRIT level2_col.png -ftB -fh! -gt -gB8 -mRtp -mLf -p!
 $GRIT title-top-col.png -ftB -fh! -gt -gB8 -mRtp -mLf -p!
 mv *.img *.map ../nitrofiles/collision
+
+$GRIT default.png -ftB -fh!-gTFF00FF -gt -gB8 -m!
+mv *.pal *.img ../nitrofiles/font

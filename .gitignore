@@ -1,3 +1,5 @@
 .devcontainer
 .vscode
 build
+temp/
+Makefile.example

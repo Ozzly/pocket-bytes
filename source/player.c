@@ -149,14 +149,24 @@ void resolvePlayerSpikeCollision(Player *players) {
     for (int i=0; i < current_player_count; i++) {
         Player *p = &players[i];
         int int_player_x = (int)p->x, int_player_y = (int)p->y;
-        if (NF_GetPoint(0, int_player_x + 2, int_player_y + PLAYER_HEIGHT - 1) == COL_SPIKE ||     // Foot left
-            NF_GetPoint(0, int_player_x + PLAYER_WIDTH /2, int_player_y + PLAYER_HEIGHT - 1) == COL_SPIKE || // Foot middle
-            NF_GetPoint(0, int_player_x + PLAYER_WIDTH - 2, int_player_y + PLAYER_HEIGHT - 1) == COL_SPIKE || // Foot right
-            NF_GetPoint(0, int_player_x + 2, int_player_y) == COL_SPIKE || // Head left
-            NF_GetPoint(0, int_player_x + PLAYER_WIDTH / 2, int_player_y) == COL_SPIKE || // Head middle
-            NF_GetPoint(0, int_player_x + PLAYER_WIDTH - 2, int_player_y) == COL_SPIKE // Head right
+        if (int_player_y >= 186) break;
+        int foot_left = NF_GetPoint(0, int_player_x + 2, int_player_y + PLAYER_HEIGHT - 1);
+        int foot_middle = NF_GetPoint(0, int_player_x + PLAYER_WIDTH /2, int_player_y + PLAYER_HEIGHT - 1);
+        int foot_right = NF_GetPoint(0, int_player_x + PLAYER_WIDTH - 2, int_player_y + PLAYER_HEIGHT - 1);
+        int head_left = NF_GetPoint(0, int_player_x + 2, int_player_y);
+        int head_middle = NF_GetPoint(0, int_player_x + PLAYER_WIDTH /2, int_player_y);
+        int head_right = NF_GetPoint(0, int_player_x + PLAYER_WIDTH - 2, int_player_y);
+        if (foot_left == COL_SPIKE ||     // Foot left
+            foot_middle == COL_SPIKE || // Foot middle
+            foot_right == COL_SPIKE || // Foot right
+            head_left == COL_SPIKE || // Head left
+            head_middle == COL_SPIKE || // Head middle
+            head_right == COL_SPIKE // Head right
         ) {
             p->is_dead = true; // track who died
+            consoleDemoInit();
+            printf("player_y: %d, Col_Spike: %d, Foot left: %d, Foot middle: %d, Foot right: %d, Head left: %d, Head middle: %d, Head right: %d\n",
+                   int_player_y, COL_SPIKE, foot_left, foot_middle, foot_right, head_left, head_middle, head_right);
         }
     }
 }

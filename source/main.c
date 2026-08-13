@@ -273,18 +273,9 @@ int main(int argc, char **argv)
 
                 entering_state = false;
 
-
-                
-                NF_LoadSpritePal("sprite/byte-mauve", 0);
-                NF_LoadSpritePal("sprite/byte-saphire", 1);
-                NF_LoadSpritePal("sprite/byte", 2);
-                NF_LoadSpritePal("sprite/byte-bone", 3);
-                NF_LoadSpritePal("sprite/byte-grey", 4);
-                NF_LoadSpritePal("sprite/byte-pink", 5);
-                NF_LoadSpritePal("sprite/byte-red", 6);
-                NF_LoadSpritePal("sprite/byte-yellow", 7);
-                
+ 
                 for (int i=0; i < TOTAL_PLAYER_COLORS; i++) {
+                    NF_LoadSpritePal(PLAYER_COLOR_PALETTES[i], i);
                     NF_VramSpritePal(1, i, i);
                 }
 

@@ -208,7 +208,7 @@ void unloadTitleScreen() {
     }
 
     // NF_DeleteSprite(0, demo_key.sprite_id);
-    NF_FreeSpriteGfx(0, GFX_SLOT_KEY);
-    NF_UnloadSpriteGfx(GFX_SLOT_KEY);
-    NF_UnloadSpritePal(PAL_SLOT_KEY);
+    // NF_FreeSpriteGfx(0, GFX_SLOT_KEY);
+    // NF_UnloadSpriteGfx(GFX_SLOT_KEY);
+    // NF_UnloadSpritePal(PAL_SLOT_KEY);
 }

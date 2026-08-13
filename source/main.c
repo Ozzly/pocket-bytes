@@ -13,6 +13,8 @@
 #define COL_EMPTY 3
 #define PLAYER_DEATH_TIME 90
 
+#define TOTAL_PLAYER_COLORS 3
+
 
 void resetStackingInfo(Player *players, Box *boxes, Platform *platforms) {
     for (int i = 0; i < current_player_count; i++)  { 
@@ -64,9 +66,6 @@ int main(int argc, char **argv)
 
     // Init Text
     NF_InitTextSys(1);
-    // Load Font
-    
-    
 
     // Init sprites
     NF_InitSpriteBuffers();
@@ -117,6 +116,13 @@ int main(int argc, char **argv)
     MenuOption menu_option = SINGLEPLAYER;
     touchPosition touch_pos;
 
+
+    int color_highlighted = 0;
+    int player_selected_colors[MAX_PLAYERS];
+    int player_selecting_color = 0;
+    int available_colors[TOTAL_PLAYER_COLORS];
+    int available_colors_count = TOTAL_PLAYER_COLORS;
+
     while (1)
     {
 
@@ -141,6 +147,8 @@ int main(int argc, char **argv)
                 // initDemoKey();
 
                 entering_state = false;
+
+                
             }
             updateDemoPlayers();
             // updateDemoKey();
@@ -223,6 +231,7 @@ int main(int argc, char **argv)
                     NF_DeleteTiledBg(1, 0);
                     NF_DeleteTiledBg(1, 1);
                     NF_DeleteTiledBg(1, 2); 
+                    // unloadTitleScreen();
 
                 } else if (menu_option == MULTIPLAYER) {
                     current_player_count = 2;
@@ -246,10 +255,85 @@ int main(int argc, char **argv)
                 NF_SetTextColor(1, 0, 1);
 
                 entering_state = false;
+
+
+                // NF_LoadSpritePal("sprite/byte-mauve", 0);
+                // NF_LoadSpritePal("sprite/byte-saphire", 1);
+                // NF_LoadSpritePal("sprite/byte", 2);
+                // NF_LoadSpritePal("sprite/byte-bone", 3);
+                
+                NF_VramSpritePal(1, 0, 0); // mauve
+                NF_VramSpritePal(1, 1, 1); // saphire
+                NF_VramSpritePal(1, 2, 2); // green
+
+                NF_VramSpriteGfx(1, 0, 0, false);
+                for (int i=0; i < TOTAL_PLAYER_COLORS; i++) {
+                    NF_CreateSprite(1, 10 + i, GFX_SLOT_PLAYER, i, 112 + i * 30, 80);
+                }
+
+                color_highlighted = 0;
+
+                for (int i=0; i < TOTAL_PLAYER_COLORS; i++) {
+                    available_colors[i] = i;
+                }
+
+
             }
 
-            NF_WriteText(1, 0, 4, 5, "Select Player 1's Color");
+            // Write string prompting player X to select color
+            char string_select_player_color[32];
+
+            if (player_selecting_color == 0) {
+                snprintf(string_select_player_color, sizeof(string_select_player_color), "Select Player 1's Color");
+            } else if (player_selecting_color == 1) {
+                snprintf(string_select_player_color, sizeof(string_select_player_color), "Select Player 2's Color");
+            }
+            NF_WriteText(1, 0, 4, 5, string_select_player_color);
+
             NF_UpdateTextLayers();
+            // Detect key movements
+            scanKeys();
+            u16 keys = keysHeld();
+            u16 keys_down = keysDown();
+
+            
+
+
+
+            if (keys_down & KEY_RIGHT) {
+                color_highlighted++;
+                if (color_highlighted >= available_colors_count) color_highlighted = available_colors_count - 1;
+            } else if (keys_down & KEY_LEFT) {
+                color_highlighted--;
+                if (color_highlighted < 0) color_highlighted = 0;
+            } else if ((keys_down & KEY_A) && available_colors_count > 0) {
+                int chosen_color = available_colors[color_highlighted];
+                player_selected_colors[player_selecting_color] = chosen_color;
+                player_selecting_color++;
+
+                NF_MoveSprite(1, 10 + chosen_color, SCREEN_WIDTH, SCREEN_HEIGHT + 10);
+
+                for (int i = color_highlighted; i < available_colors_count - 1; i++) {
+                    available_colors[i] = available_colors[i+1];
+                }
+                available_colors_count--;
+
+                if (color_highlighted >= available_colors_count) {
+                    color_highlighted = available_colors_count > 0 ? available_colors_count - 1 : 0;
+                }
+            }
+
+            if (player_selecting_color >= current_player_count) {
+                entering_state = true;
+                state = STATE_PLAYING;
+            }
+
+            for (int i=0; i < available_colors_count; i++) {
+                NF_MoveSprite(1, 10 + available_colors[i], 112 + 30 * (i - color_highlighted), 80);
+            }
+            
+            
+
         }
 
 

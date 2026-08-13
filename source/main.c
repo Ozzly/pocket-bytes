@@ -13,7 +13,18 @@
 #define COL_EMPTY 3
 #define PLAYER_DEATH_TIME 90
 
-#define TOTAL_PLAYER_COLORS 3
+#define TOTAL_PLAYER_COLORS 8
+
+static const char *PLAYER_COLOR_PALETTES[TOTAL_PLAYER_COLORS] = {
+    "sprite/byte-mauve",
+    "sprite/byte-saphire",
+    "sprite/byte",
+    "sprite/byte-bone",
+    "sprite/byte-grey",
+    "sprite/byte-pink",
+    "sprite/byte-red",
+    "sprite/byte-yellow",
+};
 
 
 void resetStackingInfo(Player *players, Box *boxes, Platform *platforms) {
@@ -225,13 +236,19 @@ int main(int argc, char **argv)
                     state = STATE_SINGLEPLAYER_COLOR_SELECT;
 
                     // Unload bottom background
-                    NF_UnloadTiledBg("mode-singleplayer");
-                    NF_UnloadTiledBg("mode-multiplayer");
-                    NF_UnloadTiledBg("mode-options");
-                    NF_DeleteTiledBg(1, 0);
-                    NF_DeleteTiledBg(1, 1);
-                    NF_DeleteTiledBg(1, 2); 
-                    // unloadTitleScreen();
+                    // NF_UnloadTiledBg("mode-singleplayer");
+                    // NF_UnloadTiledBg("mode-multiplayer");
+                    // NF_UnloadTiledBg("mode-options");
+                    // NF_DeleteTiledBg(1, 0);
+                    // NF_DeleteTiledBg(1, 1);
+                    // NF_DeleteTiledBg(1, 2); 
+                    unloadTitleScreen();
+
+
+                    // NF_UnloadSpritePal(0);
+                    // NF_UnloadSpritePal(1);
+                    // NF_UnloadSpritePal(2);
+
 
                 } else if (menu_option == MULTIPLAYER) {
                     current_player_count = 2;
@@ -257,18 +274,24 @@ int main(int argc, char **argv)
                 entering_state = false;
 
 
-                // NF_LoadSpritePal("sprite/byte-mauve", 0);
-                // NF_LoadSpritePal("sprite/byte-saphire", 1);
-                // NF_LoadSpritePal("sprite/byte", 2);
-                // NF_LoadSpritePal("sprite/byte-bone", 3);
                 
-                NF_VramSpritePal(1, 0, 0); // mauve
-                NF_VramSpritePal(1, 1, 1); // saphire
-                NF_VramSpritePal(1, 2, 2); // green
+                NF_LoadSpritePal("sprite/byte-mauve", 0);
+                NF_LoadSpritePal("sprite/byte-saphire", 1);
+                NF_LoadSpritePal("sprite/byte", 2);
+                NF_LoadSpritePal("sprite/byte-bone", 3);
+                NF_LoadSpritePal("sprite/byte-grey", 4);
+                NF_LoadSpritePal("sprite/byte-pink", 5);
+                NF_LoadSpritePal("sprite/byte-red", 6);
+                NF_LoadSpritePal("sprite/byte-yellow", 7);
+                
+                for (int i=0; i < TOTAL_PLAYER_COLORS; i++) {
+                    NF_VramSpritePal(1, i, i);
+                }
+
 
                 NF_VramSpriteGfx(1, 0, 0, false);
                 for (int i=0; i < TOTAL_PLAYER_COLORS; i++) {
-                    NF_CreateSprite(1, 10 + i, GFX_SLOT_PLAYER, i, 112 + i * 30, 80);
+                    NF_CreateSprite(1, SPRITE_BASE_COLOR_SELECTION + i, GFX_SLOT_PLAYER, i, 112 + i * 30, 80);
                 }
 
                 color_highlighted = 0;
@@ -311,7 +334,7 @@ int main(int argc, char **argv)
                 player_selected_colors[player_selecting_color] = chosen_color;
                 player_selecting_color++;
 
-                NF_MoveSprite(1, 10 + chosen_color, SCREEN_WIDTH, SCREEN_HEIGHT + 10);
+                NF_MoveSprite(1, SPRITE_BASE_COLOR_SELECTION + chosen_color, SCREEN_WIDTH, SCREEN_HEIGHT + 10);
 
                 for (int i = color_highlighted; i < available_colors_count - 1; i++) {
                     available_colors[i] = available_colors[i+1];
@@ -323,13 +346,22 @@ int main(int argc, char **argv)
                 }
             }
 
+
+            // Exit player color selection
             if (player_selecting_color >= current_player_count) {
                 entering_state = true;
                 state = STATE_PLAYING;
+
+                for (int i=0; i < TOTAL_PLAYER_COLORS; i++) {
+                    NF_UnloadSpritePal(i);
+                    NF_DeleteSprite(1, SPRITE_BASE_COLOR_SELECTION + i);
+                }
+
+                NF_UnloadTiledBg("player-color-select");
             }
 
             for (int i=0; i < available_colors_count; i++) {
-                NF_MoveSprite(1, 10 + available_colors[i], 112 + 30 * (i - color_highlighted), 80);
+                NF_MoveSprite(1, SPRITE_BASE_COLOR_SELECTION + available_colors[i], 112 + 30 * (i - color_highlighted), 80);
             }
             
             
@@ -340,14 +372,14 @@ int main(int argc, char **argv)
         if (state == STATE_PLAYING) {
 
             if (entering_state) {
-                NF_LoadSpritePal("sprite/byte", 2);
-                NF_LoadSpritePal("sprite/byte-mauve", 0);
-                NF_LoadSpritePal("sprite/byte-saphire", 1);
-                NF_LoadSpritePal("sprite/byte-bone", 3);
-                NF_VramSpritePal(0, 0, 0);
-                NF_VramSpritePal(0, 1, 1);
-                NF_VramSpritePal(0, 2, 2);
-                NF_VramSpritePal(0, 3, 3);
+
+                for (int i = 0; i < current_player_count; i++) {
+                    NF_LoadSpritePal(PLAYER_COLOR_PALETTES[player_selected_colors[i]], PAL_SLOT_PLAYER_BASE + i);
+                    NF_VramSpritePal(0, PAL_SLOT_PLAYER_BASE + i, PAL_SLOT_PLAYER_BASE + i);
+                }
+
+
+                
 
 
                 loadLevel(&LEVELS[current_level], &key);

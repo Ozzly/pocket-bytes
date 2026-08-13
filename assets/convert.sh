@@ -13,6 +13,10 @@ mv *.pal *.img ../nitrofiles/sprite
 $GRIT byte-mauve.png -ftB -fh! -gTFF00FF -gt -gB8 -m!
 $GRIT byte-saphire.png -ftB -fh! -gTFF00FF -gt -gB8 -m!
 $GRIT byte-bone.png -ftB -fh! -gTFF00FF -gt -gB8 -m!
+$GRIT byte-pink.png -ftB -fh! -gTFF00FF -gt -gB8 -m!
+$GRIT byte-red.png -ftB -fh! -gTFF00FF -gt -gB8 -m!
+$GRIT byte-grey.png -ftB -fh! -gTFF00FF -gt -gB8 -m!
+$GRIT byte-yellow.png -ftB -fh! -gTFF00FF -gt -gB8 -m!
 mv *.pal ../nitrofiles/sprite
 rm *.img
 

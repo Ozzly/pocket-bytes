@@ -9,6 +9,7 @@
 #include "camera.h"
 #include "platform.h"
 #include "title_screen.h"
+#include <dswifi9.h>
 
 #define COL_EMPTY 3
 #define PLAYER_DEATH_TIME 90
@@ -231,6 +232,7 @@ int main(int argc, char **argv)
             // Select option
             if (option_selected) {
                 entering_state = true;
+                unloadTitleScreen();
                 if (menu_option == SINGLEPLAYER) {
                     current_player_count = 2;
                     state = STATE_SINGLEPLAYER_COLOR_SELECT;
@@ -242,7 +244,6 @@ int main(int argc, char **argv)
                     // NF_DeleteTiledBg(1, 0);
                     // NF_DeleteTiledBg(1, 1);
                     // NF_DeleteTiledBg(1, 2); 
-                    unloadTitleScreen();
 
 
                     // NF_UnloadSpritePal(0);
@@ -252,6 +253,8 @@ int main(int argc, char **argv)
 
                 } else if (menu_option == MULTIPLAYER) {
                     current_player_count = 2;
+                    state = STATE_MULTIPLAYER_JOIN;
+                    
                 } else if (menu_option == OPTIONS) {
                 }
             }
@@ -357,6 +360,55 @@ int main(int argc, char **argv)
             
             
 
+        }
+
+        if (state == STATE_MULTIPLAYER_JOIN) {
+
+            if (entering_state) {
+                NF_LoadTiledBg("bg/host-client-select", "host-client-select", 256, 256);
+                NF_CreateTiledBg(1, 3, "host-client-select");
+
+                if (!Wifi_InitDefault(INIT_ONLY | WIFI_LOCAL_ONLY)) {
+                    consoleDemoInit();
+                    printf("Wifi no worke"); 
+                }
+
+
+                entering_state = false;
+            }
+            
+
+            // Detect if entering host or client mode
+            scanKeys();
+            u16 keys_held = keysHeld();
+
+            if (keys_held & KEY_TOUCH) {
+                touchRead(&touch_pos);
+                if (touch_pos.px > 31 && touch_pos.px < 224) {
+                    if (touch_pos.py >= 24 && touch_pos.py <= 84) {
+                        // host mode
+                        entering_state = true;
+                        NF_UnloadTiledBg("host-client-select");
+                        state = STATE_MULTIPLAYER_HOST;
+                    } else if (touch_pos.px >= 112 && touch_pos.py <= 172) {
+                        // client mode
+                        entering_state = true;
+                        state = STATE_MULTIPLAYER_CLIENT;
+                    }
+                    
+                }
+            }
+
+        }
+
+        if (state == STATE_MULTIPLAYER_HOST) {
+            // host mode active
+            if (entering_state) {
+                NF_LoadTiledBg("bg/host-list", "host-list", 256, 256);
+                NF_CreateTiledBg(1, 3, "host-list");
+
+                entering_state = false;
+            }
         }
 
 

@@ -38,7 +38,7 @@ SDIMAGE		:= image.bin
 # Libraries
 # ---------
 
-LIBS		+= -lnflib -ldswifi9 -lnds9 -lc
+LIBS		+= -lnflib -ldswifi9_noip -lnds9 -lc
 LIBDIRS		+= $(BLOCKSDSEXT)/nflib \
 		   $(BLOCKSDS)/libs/dswifi \
 		   $(BLOCKSDS)/libs/libnds
@@ -191,7 +191,7 @@ endif
 $(ROM): $(ELF)
 	@echo "  NDSTOOL $@"
 	$(V)$(BLOCKSDS)/tools/ndstool/ndstool -c $@ \
-		-7 $(BLOCKSDS)/sys/default_arm7/arm7.elf -9 $(ELF) \
+		-7 $(BLOCKSDS)/sys/arm7/main_core/arm7_dswifi.elf -9 $(ELF) \
 		-b $(GAME_ICON) "$(GAME_FULL_TITLE)" \
 		$(NDSTOOL_ARGS)
 

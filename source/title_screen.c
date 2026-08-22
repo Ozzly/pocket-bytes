@@ -195,9 +195,9 @@ void unloadTitleScreen() {
     NF_UnloadTiledBg("mode-singleplayer");
     NF_UnloadTiledBg("mode-multiplayer");
     NF_UnloadTiledBg("mode-options");
-    NF_DeleteTiledBg(1, 0);
     NF_DeleteTiledBg(1, 1);
     NF_DeleteTiledBg(1, 2);
+    NF_DeleteTiledBg(1, 3);
 
     NF_UnloadSpritePal(0);
     NF_UnloadSpritePal(1);

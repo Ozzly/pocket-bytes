@@ -50,6 +50,14 @@ void resetStackingInfo(Player *players, Box *boxes, Platform *platforms) {
     }
 }
 
+typedef struct {
+    u32 command;
+} packet_host_to_client;
+
+typedef struct {
+    u32 keys_held;
+} packet_client_to_host;
+
 
 
 int main(int argc, char **argv)
@@ -86,7 +94,16 @@ int main(int argc, char **argv)
     // Load sprite files from NitroFS
     NF_LoadSpriteGfx("sprite/byte", 0, 32, 32);
     NF_VramSpriteGfx(0, 0, 0, false);
-    
+
+
+    // Load font
+    NF_LoadTextFont("font/default", "normal", 256, 256, 0);
+    NF_CreateTextLayer(1, 0, 0, "normal");
+
+    // Set font color
+    NF_DefineTextColor(1, 0, 1, 0, 0, 0); // black
+    NF_SetTextColor(1, 0, 1);
+
 
     Key key;
     Button buttons[MAX_BUTTONS];
@@ -149,11 +166,11 @@ int main(int argc, char **argv)
                 NF_LoadTiledBg("bg/select-mode-singleplayer", "mode-singleplayer", 256, 256);
                 NF_LoadTiledBg("bg/select-mode-multiplayer", "mode-multiplayer", 256, 256);
                 NF_LoadTiledBg("bg/select-mode-options", "mode-options", 256, 256);
-                NF_CreateTiledBg(1, 2, "mode-options");
-                NF_CreateTiledBg(1, 1, "mode-multiplayer");
-                NF_CreateTiledBg(1, 0, "mode-singleplayer");
-                NF_HideBg(1, 1);
+                NF_CreateTiledBg(1, 3, "mode-options");
+                NF_CreateTiledBg(1, 2, "mode-multiplayer");
+                NF_CreateTiledBg(1, 1, "mode-singleplayer");
                 NF_HideBg(1, 2);
+                NF_HideBg(1, 3);
 
                 createDemoPlayers();
                 // initDemoKey();
@@ -212,19 +229,19 @@ int main(int argc, char **argv)
             if (menu_option != prev_option) {
                 switch (menu_option) {
                     case SINGLEPLAYER:
-                        NF_ShowBg(1, 0);
-                        NF_HideBg(1, 1);
+                        NF_ShowBg(1, 1);
                         NF_HideBg(1, 2);
+                        NF_HideBg(1, 3);
                         break;
                     case MULTIPLAYER:
-                        NF_ShowBg(1, 1);
-                        NF_HideBg(1, 0);
-                        NF_HideBg(1, 2);
+                        NF_ShowBg(1, 2);
+                        NF_HideBg(1, 1);
+                        NF_HideBg(1, 3);
                         break;
                     case OPTIONS:
-                        NF_ShowBg(1, 2);
-                        NF_HideBg(1, 0);
+                        NF_ShowBg(1, 3);
                         NF_HideBg(1, 1);
+                        NF_HideBg(1, 2);
                         break;
                 }
             }
@@ -266,13 +283,7 @@ int main(int argc, char **argv)
                 NF_LoadTiledBg("bg/player-color-select", "player-color-select", 256, 256);
                 NF_CreateTiledBg(1, 3, "player-color-select");
 
-                // Load font
-                NF_LoadTextFont("font/default", "normal", 256, 256, 0);
-                NF_CreateTextLayer(1, 0, 0, "normal");
-
-                // Set font color
-                NF_DefineTextColor(1, 0, 1, 0, 0, 0); // black
-                NF_SetTextColor(1, 0, 1);
+                
 
                 entering_state = false;
 
@@ -404,11 +415,90 @@ int main(int argc, char **argv)
         if (state == STATE_MULTIPLAYER_HOST) {
             // host mode active
             if (entering_state) {
+                // Set background
                 NF_LoadTiledBg("bg/host-list", "host-list", 256, 256);
                 NF_CreateTiledBg(1, 3, "host-list");
 
                 entering_state = false;
+                
+                // Start Wifi host mode                
+                Wifi_MultiplayerHostMode(MAX_PLAYERS, sizeof(packet_host_to_client), sizeof(packet_client_to_host));
+
+                // Wait for library to enter host mode
+                while (!Wifi_LibraryModeReady()) swiWaitForVBlank();
+
+                Wifi_SetChannel(6);
+                Wifi_MultiplayerAllowNewClients(true);
+                Wifi_BeaconStart("NintendoDS", 0xABCDEF01);
             }
+
+            int num_clients = Wifi_MultiplayerGetNumClients();
+            u16 players_mask = Wifi_MultiplayerGetClientMask();
+            char player_count_string[16];
+
+            snprintf(player_count_string, sizeof(player_count_string), "Clients: %d", num_clients);
+
+            NF_WriteText(1, 0, 4, 1, player_count_string);
+
+
+            Wifi_ConnectedClient client[4];
+            num_clients = Wifi_MultiplayerGetClients(4, &(client[0]));
+
+            for (int i=0; i < num_clients; i++) {
+                char client_info[32];
+                snprintf(client_info, sizeof(client_info), "AID %d (State %d) %04X", client[i].association_id, client[i].state, client[i].macaddr[0]);
+    
+                NF_WriteText(1, 0, 1, i+3, client_info);
+            }
+
+            NF_UpdateTextLayers();
+           
+            
+
+        }
+
+        if (state == STATE_MULTIPLAYER_CLIENT) {
+            if (entering_state) {
+                entering_state = false;
+            
+                Wifi_MultiplayerClientMode(sizeof(packet_client_to_host));
+
+                // Wait for library to enter client mode
+                while (!Wifi_LibraryModeReady()) swiWaitForVBlank();
+
+                Wifi_ScanMode();
+            }
+
+            int num_ap = Wifi_GetNumAP();
+            // Autoconnect to the first valid ap
+            if (num_ap > 0) {
+                Wifi_AccessPoint ap;
+                Wifi_GetAPData(0, &ap);
+
+                Wifi_ConnectOpenAP(&ap);
+
+                while (true) {
+                    swiWaitForVBlank();
+                    int status = Wifi_AssocStatus();
+
+                    if (status == ASSOCSTATUS_CANNOTCONNECT) {
+                        // fail
+                    }
+                    if (status == ASSOCSTATUS_ASSOCIATED) {
+                        entering_state = true;
+                        state = STATE_MULTIPLAYER_CLIENT_CONNECTED;
+                        break;
+                    }
+                }
+            }
+        }
+        
+        if (state == STATE_MULTIPLAYER_CLIENT_CONNECTED) {
+            if (entering_state) {
+                entering_state = false;
+            }
+            NF_WriteText(1, 0, 1, 5, "CONNECTED!!");
+            NF_UpdateTextLayers();
         }
 
 

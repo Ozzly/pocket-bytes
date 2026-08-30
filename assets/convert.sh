@@ -27,6 +27,7 @@ $GRIT select-mode-options.png -ftB -fh! -gTFF00FF -gt -gB8 -mR8 -mLs
 $GRIT player-color-select.png -ftB -fh! -gTFF00FF -gt -gB8 -mR8 -mLs
 $GRIT host-client-select.png -ftB -fh! -gTFF00FF -gt -gB8 -mR8 -mLs
 $GRIT host-list.png -ftB -fh! -gTFF00FF -gt -gB8 -mR8 -mLs
+$GRIT client.png -ftB -fh! -gTFF00FF -gt -gB8 -mR8 -mLs
 $GRIT level1.png -ftB -fh! -gTFF00FF -gt -gB8 -mR8 -mLs
 $GRIT level2.png -ftB -fh! -gTFF00FF -gt -gB8 -mR8 -mLs
 mv *.pal *.img *.map ../nitrofiles/bg

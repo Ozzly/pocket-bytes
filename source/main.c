@@ -405,6 +405,7 @@ int main(int argc, char **argv)
                         // client mode
                         entering_state = true;
                         state = STATE_MULTIPLAYER_CLIENT;
+                        NF_UnloadTiledBg("host-client-select");
                     }
                     
                 }
@@ -432,23 +433,32 @@ int main(int argc, char **argv)
                 Wifi_BeaconStart("NintendoDS", 0xABCDEF01);
             }
 
+            NF_ClearTextLayer(1, 0);
+            NF_UpdateTextLayers();
+
             int num_clients = Wifi_MultiplayerGetNumClients();
             u16 players_mask = Wifi_MultiplayerGetClientMask();
             char player_count_string[16];
 
             snprintf(player_count_string, sizeof(player_count_string), "Clients: %d", num_clients);
 
-            NF_WriteText(1, 0, 4, 1, player_count_string);
+            NF_WriteText(1, 0, 4, 6, player_count_string);
 
 
             Wifi_ConnectedClient client[4];
             num_clients = Wifi_MultiplayerGetClients(4, &(client[0]));
 
+            
+
             for (int i=0; i < num_clients; i++) {
                 char client_info[32];
-                snprintf(client_info, sizeof(client_info), "AID %d (State %d) %04X", client[i].association_id, client[i].state, client[i].macaddr[0]);
+                snprintf(client_info, sizeof(client_info), "AID %d (State %d) %04X", client[i].association_id, client[i].state, client[i].macaddr[2]);
     
-                NF_WriteText(1, 0, 1, i+3, client_info);
+                NF_WriteText(1, 0, 4, i+7, client_info);
+            }
+
+            for (int i=num_clients; i < MAX_PLAYERS; i++) {
+                NF_WriteText(1, 0, 4, i+7, "                  ");
             }
 
             NF_UpdateTextLayers();
@@ -460,6 +470,9 @@ int main(int argc, char **argv)
         if (state == STATE_MULTIPLAYER_CLIENT) {
             if (entering_state) {
                 entering_state = false;
+
+                NF_LoadTiledBg("bg/client", "client", 256, 256);
+                NF_CreateTiledBg(1, 3, "client");
             
                 Wifi_MultiplayerClientMode(sizeof(packet_client_to_host));
 
@@ -467,6 +480,8 @@ int main(int argc, char **argv)
                 while (!Wifi_LibraryModeReady()) swiWaitForVBlank();
 
                 Wifi_ScanMode();
+                // Wait for wifi to setup for a few frames
+                for (int i=0; i < 5; i++) swiWaitForVBlank();
             }
 
             int num_ap = Wifi_GetNumAP();
@@ -483,6 +498,9 @@ int main(int argc, char **argv)
 
                     if (status == ASSOCSTATUS_CANNOTCONNECT) {
                         // fail
+                        NF_WriteText(1, 0, 10, 10, "CONNECTION FAILED");
+                        NF_UpdateTextLayers();
+                        break;
                     }
                     if (status == ASSOCSTATUS_ASSOCIATED) {
                         entering_state = true;

@@ -394,6 +394,7 @@ int main(int argc, char **argv)
                     printf("Wifi no worke"); 
                 }
 
+                // Return sprite
                 NF_CreateSprite(1, 1, 1, 10, 220, 160);
 
                 entering_state = false;
@@ -409,14 +410,10 @@ int main(int argc, char **argv)
                 if (touch_pos.px > 31 && touch_pos.px < 224) {
                     if (touch_pos.py >= 24 && touch_pos.py <= 84) {
                         // host mode
-                        entering_state = true;
-                        NF_UnloadTiledBg("host-client-select");
                         state = STATE_MULTIPLAYER_HOST;
                     } else if (touch_pos.px >= 112 && touch_pos.py <= 172) {
                         // client mode
-                        entering_state = true;
                         state = STATE_MULTIPLAYER_CLIENT;
-                        NF_UnloadTiledBg("host-client-select");
                     }
                     
                 }
@@ -427,12 +424,16 @@ int main(int argc, char **argv)
                     touch_pos.py >= RETURN_Y && 
                     touch_pos.py <= RETURN_Y + RETURN_HEIGHT
                 ) {
-                    entering_state = true;
                     state = STATE_TITLE;
-                    NF_UnloadTiledBg("host-client-select");
-
-
                 }
+            }
+
+            // Cleanup on exit
+            if (state != STATE_MULTIPLAYER_JOIN) {
+                entering_state = true;
+                NF_UnloadTiledBg("host-client-select");
+                NF_DeleteTiledBg(1, 3);
+                NF_DeleteSprite(1, 1);
             }
 
         }

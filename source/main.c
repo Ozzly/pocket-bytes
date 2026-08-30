@@ -16,6 +16,11 @@
 
 #define TOTAL_PLAYER_COLORS 8
 
+#define RETURN_X 220
+#define RETURN_Y 160
+#define RETURN_WIDTH 24
+#define RETURN_HEIGHT 24
+
 static const char *PLAYER_COLOR_PALETTES[TOTAL_PLAYER_COLORS] = {
     "sprite/byte-mauve",
     "sprite/byte-saphire",
@@ -94,6 +99,11 @@ int main(int argc, char **argv)
     // Load sprite files from NitroFS
     NF_LoadSpriteGfx("sprite/byte", 0, 32, 32);
     NF_VramSpriteGfx(0, 0, 0, false);
+
+    NF_LoadSpriteGfx("sprite/return", 1, 32, 32);
+    NF_VramSpriteGfx(1, 1, 1, false);
+    NF_LoadSpritePal("sprite/return", 10);
+    NF_VramSpritePal(1, 10, 10);
 
 
     // Load font
@@ -384,6 +394,7 @@ int main(int argc, char **argv)
                     printf("Wifi no worke"); 
                 }
 
+                NF_CreateSprite(1, 1, 1, 10, 220, 160);
 
                 entering_state = false;
             }
@@ -408,6 +419,19 @@ int main(int argc, char **argv)
                         NF_UnloadTiledBg("host-client-select");
                     }
                     
+                }
+
+                // Return button
+                if (touch_pos.px >= RETURN_X && 
+                    touch_pos.px <= RETURN_X + RETURN_WIDTH && 
+                    touch_pos.py >= RETURN_Y && 
+                    touch_pos.py <= RETURN_Y + RETURN_HEIGHT
+                ) {
+                    entering_state = true;
+                    state = STATE_TITLE;
+                    NF_UnloadTiledBg("host-client-select");
+
+
                 }
             }
 

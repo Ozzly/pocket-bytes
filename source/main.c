@@ -64,6 +64,19 @@ typedef struct {
 } packet_client_to_host;
 
 
+void checkReturnButton(GameState transition_to) {
+    if (!(keysHeld() & KEY_TOUCH)) return;
+    touchPosition touch_pos;
+    touchRead(&touch_pos);
+    if (touch_pos.px >= RETURN_X && 
+        touch_pos.px <= RETURN_X + RETURN_WIDTH && 
+        touch_pos.py >= RETURN_Y && 
+        touch_pos.py <= RETURN_Y + RETURN_HEIGHT
+    ) {
+        state = transition_to;
+    }
+}
+
 
 int main(int argc, char **argv)
 {
@@ -418,15 +431,11 @@ int main(int argc, char **argv)
                     
                 }
 
-                // Return button
-                if (touch_pos.px >= RETURN_X && 
-                    touch_pos.px <= RETURN_X + RETURN_WIDTH && 
-                    touch_pos.py >= RETURN_Y && 
-                    touch_pos.py <= RETURN_Y + RETURN_HEIGHT
-                ) {
-                    state = STATE_TITLE;
-                }
+                
             }
+
+            // Return
+            checkReturnButton(STATE_TITLE);
 
             // Cleanup on exit
             if (state != STATE_MULTIPLAYER_JOIN) {
@@ -490,6 +499,7 @@ int main(int argc, char **argv)
             }
 
             NF_UpdateTextLayers();
+
            
             
 

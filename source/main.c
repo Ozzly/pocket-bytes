@@ -434,6 +434,9 @@ int main(int argc, char **argv)
                 NF_UnloadTiledBg("host-client-select");
                 NF_DeleteTiledBg(1, 3);
                 NF_DeleteSprite(1, 1);
+
+                Wifi_DisableWifi();
+                Wifi_Deinit();
             }
 
         }

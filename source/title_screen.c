@@ -199,13 +199,21 @@ void unloadTitleScreen() {
     NF_DeleteTiledBg(1, 2);
     NF_DeleteTiledBg(1, 3);
 
+    for (int i = 0; i < DEMO_PLAYER_COUNT; i++) {
+        NF_DeleteSprite(0, demo_players[i].sprite_id);
+    }
+
     NF_UnloadSpritePal(0);
     NF_UnloadSpritePal(1);
     NF_UnloadSpritePal(2);
 
-    for (int i = 0; i < DEMO_PLAYER_COUNT; i++) {
-        NF_DeleteSprite(0, demo_players[i].sprite_id);
-    }
+    // NF_SpriteOamSet(0);
+    // NF_SpriteOamSet(1);
+    // oamUpdate(&oamMain);
+    // oamUpdate(&oamSub);
+    // swiWaitForVBlank();
+
+    
 
     // NF_DeleteSprite(0, demo_key.sprite_id);
     // NF_FreeSpriteGfx(0, GFX_SLOT_KEY);

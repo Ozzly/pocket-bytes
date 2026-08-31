@@ -113,10 +113,10 @@ int main(int argc, char **argv)
     NF_LoadSpriteGfx("sprite/byte", 0, 32, 32);
     NF_VramSpriteGfx(0, 0, 0, false);
 
-    NF_LoadSpriteGfx("sprite/return", 1, 32, 32);
-    NF_VramSpriteGfx(1, 1, 1, false);
-    NF_LoadSpritePal("sprite/return", 10);
-    NF_VramSpritePal(1, 10, 10);
+    NF_LoadSpriteGfx("sprite/return", GFX_SLOT_RETURN, 32, 32);
+    NF_VramSpriteGfx(1, GFX_SLOT_RETURN, GFX_SLOT_RETURN, false);
+    NF_LoadSpritePal("sprite/return", PAL_SLOT_RETURN);
+    NF_VramSpritePal(1, PAL_SLOT_RETURN, PAL_SLOT_RETURN);
 
 
     // Load font
@@ -275,6 +275,7 @@ int main(int argc, char **argv)
             if (option_selected) {
                 entering_state = true;
                 unloadTitleScreen();
+                // for (int i=0; i < 10; i++) swiWaitForVBlank();
                 if (menu_option == SINGLEPLAYER) {
                     current_player_count = 2;
                     state = STATE_SINGLEPLAYER_COLOR_SELECT;
@@ -304,24 +305,21 @@ int main(int argc, char **argv)
 
         if (state == STATE_SINGLEPLAYER_COLOR_SELECT) {
             if (entering_state) {
+                entering_state = false;
+                
                 // Load background
                 NF_LoadTiledBg("bg/player-color-select", "player-color-select", 256, 256);
                 NF_CreateTiledBg(1, 3, "player-color-select");
 
-                
-
-                entering_state = false;
-
- 
+                // Load palettes
                 for (int i=0; i < TOTAL_PLAYER_COLORS; i++) {
-                    NF_LoadSpritePal(PLAYER_COLOR_PALETTES[i], i);
-                    NF_VramSpritePal(1, i, i);
+                    NF_LoadSpritePal(PLAYER_COLOR_PALETTES[i], i + PAL_SLOT_PLAYER_BASE);
+                    NF_VramSpritePal(1, i + PAL_SLOT_PLAYER_BASE, i + PAL_SLOT_PLAYER_BASE);
                 }
-
 
                 NF_VramSpriteGfx(1, 0, 0, false);
                 for (int i=0; i < TOTAL_PLAYER_COLORS; i++) {
-                    NF_CreateSprite(1, SPRITE_BASE_COLOR_SELECTION + i, GFX_SLOT_PLAYER, i, 112 + i * 30, 80);
+                    NF_CreateSprite(1, SPRITE_BASE_PLAYER + i, GFX_SLOT_PLAYER, i + PAL_SLOT_PLAYER_BASE, 112 + i * 30, 80);
                 }
 
                 color_highlighted = 0;
@@ -342,16 +340,11 @@ int main(int argc, char **argv)
                 snprintf(string_select_player_color, sizeof(string_select_player_color), "Select Player 2's Color");
             }
             NF_WriteText(1, 0, 4, 5, string_select_player_color);
-
             NF_UpdateTextLayers();
+
             // Detect key movements
             scanKeys();
-            u16 keys = keysHeld();
             u16 keys_down = keysDown();
-
-            
-
-
 
             if (keys_down & KEY_RIGHT) {
                 color_highlighted++;
@@ -364,7 +357,7 @@ int main(int argc, char **argv)
                 player_selected_colors[player_selecting_color] = chosen_color;
                 player_selecting_color++;
 
-                NF_MoveSprite(1, SPRITE_BASE_COLOR_SELECTION + chosen_color, SCREEN_WIDTH, SCREEN_HEIGHT + 10);
+                NF_MoveSprite(1, SPRITE_BASE_PLAYER + chosen_color, SCREEN_WIDTH, SCREEN_HEIGHT + 10);
 
                 for (int i = color_highlighted; i < available_colors_count - 1; i++) {
                     available_colors[i] = available_colors[i+1];
@@ -383,20 +376,18 @@ int main(int argc, char **argv)
                 state = STATE_PLAYING;
 
                 for (int i=0; i < TOTAL_PLAYER_COLORS; i++) {
-                    NF_UnloadSpritePal(i);
-                    NF_DeleteSprite(1, SPRITE_BASE_COLOR_SELECTION + i);
+                    NF_UnloadSpritePal(i + PAL_SLOT_PLAYER_BASE);
+                    NF_DeleteSprite(1, SPRITE_BASE_PLAYER + i);
                 }
 
                 NF_UnloadTiledBg("player-color-select");
             }
 
             for (int i=0; i < available_colors_count; i++) {
-                NF_MoveSprite(1, SPRITE_BASE_COLOR_SELECTION + available_colors[i], 112 + 30 * (i - color_highlighted), 80);
+                NF_MoveSprite(1, SPRITE_BASE_PLAYER + available_colors[i], 112 + 30 * (i - color_highlighted), 80);
             }
-            
-            
-
         }
+
 
         if (state == STATE_MULTIPLAYER_JOIN) {
 
@@ -410,7 +401,7 @@ int main(int argc, char **argv)
                 }
 
                 // Return sprite
-                NF_CreateSprite(1, 1, 1, 10, 220, 160);
+                NF_CreateSprite(1, 1, 1, PAL_SLOT_RETURN, 220, 160);
 
                 entering_state = false;
             }
@@ -475,7 +466,7 @@ int main(int argc, char **argv)
                 Wifi_BeaconStart("NintendoDS", 0xABCDEF01);
 
                 // Return sprite
-                NF_CreateSprite(1, 1, 1, 10, 220, 160);
+                NF_CreateSprite(1, 1, 1, PAL_SLOT_RETURN, 220, 160);
             }
 
             NF_ClearTextLayer(1, 0);
@@ -545,7 +536,7 @@ int main(int argc, char **argv)
                 // Wait for wifi to setup for a few frames
                 for (int i=0; i < 5; i++) swiWaitForVBlank();
 
-                NF_CreateSprite(1, 1, 1, 10, 220, 160);
+                NF_CreateSprite(1, 1, 1, PAL_SLOT_RETURN, 220, 160);
             }
 
             int num_ap = Wifi_GetNumAP();
@@ -596,7 +587,7 @@ int main(int argc, char **argv)
             if (entering_state) {
                 entering_state = false;
 
-                NF_CreateSprite(1, 1, 1, 10, 220, 160);
+                NF_CreateSprite(1, 1, 1, PAL_SLOT_RETURN, 220, 160);
             }
 
             NF_WriteText(1, 0, 1, 5, "CONNECTED!!");

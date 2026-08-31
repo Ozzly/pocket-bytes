@@ -178,6 +178,8 @@ int main(int argc, char **argv)
     while (1)
     {
 
+        GameState state_at_frame_start = state;
+
         if (state == STATE_TITLE) {
 
             // Setup title screen on 1st load
@@ -444,8 +446,11 @@ int main(int argc, char **argv)
                 NF_DeleteTiledBg(1, 3);
                 NF_DeleteSprite(1, 1);
 
-                Wifi_DisableWifi();
-                Wifi_Deinit();
+                if (state == STATE_TITLE) {
+                    Wifi_DisableWifi();
+                    Wifi_Deinit();
+                }
+                
             }
 
         }
@@ -468,6 +473,9 @@ int main(int argc, char **argv)
                 Wifi_SetChannel(6);
                 Wifi_MultiplayerAllowNewClients(true);
                 Wifi_BeaconStart("NintendoDS", 0xABCDEF01);
+
+                // Return sprite
+                NF_CreateSprite(1, 1, 1, 10, 220, 160);
             }
 
             NF_ClearTextLayer(1, 0);
@@ -485,8 +493,6 @@ int main(int argc, char **argv)
             Wifi_ConnectedClient client[4];
             num_clients = Wifi_MultiplayerGetClients(4, &(client[0]));
 
-            
-
             for (int i=0; i < num_clients; i++) {
                 char client_info[32];
                 snprintf(client_info, sizeof(client_info), "AID %d (State %d) %04X", client[i].association_id, client[i].state, client[i].macaddr[2]);
@@ -500,9 +506,27 @@ int main(int argc, char **argv)
 
             NF_UpdateTextLayers();
 
+            // Return
+            scanKeys();
+            checkReturnButton(STATE_MULTIPLAYER_JOIN);
            
-            
-
+            // Cleanup on exit
+            if (state != STATE_MULTIPLAYER_HOST) {
+                entering_state = true;
+                
+                // Disable wifi when transitioning
+                Wifi_IdleMode();
+                Wifi_DisableWifi();
+                for (int i=0; i < 3; i++) swiWaitForVBlank();
+                Wifi_Deinit();
+                // Unload background
+                NF_UnloadTiledBg("host-list");
+                NF_DeleteTiledBg(1, 3);
+                NF_DeleteSprite(1, 1);
+                // Clear text
+                NF_ClearTextLayer(1, 0);
+                NF_UpdateTextLayers();
+            }
         }
 
         if (state == STATE_MULTIPLAYER_CLIENT) {
@@ -520,6 +544,8 @@ int main(int argc, char **argv)
                 Wifi_ScanMode();
                 // Wait for wifi to setup for a few frames
                 for (int i=0; i < 5; i++) swiWaitForVBlank();
+
+                NF_CreateSprite(1, 1, 1, 10, 220, 160);
             }
 
             int num_ap = Wifi_GetNumAP();
@@ -541,20 +567,55 @@ int main(int argc, char **argv)
                         break;
                     }
                     if (status == ASSOCSTATUS_ASSOCIATED) {
-                        entering_state = true;
                         state = STATE_MULTIPLAYER_CLIENT_CONNECTED;
                         break;
                     }
                 }
+            }
+
+            // Return button
+            scanKeys();
+            checkReturnButton(STATE_MULTIPLAYER_JOIN);
+
+            // Cleanup on exit
+            if (state != STATE_MULTIPLAYER_CLIENT) {
+                entering_state = true;
+
+                if (state == STATE_MULTIPLAYER_JOIN) {
+                    // Disable wifi
+                    Wifi_IdleMode();
+                    Wifi_DisableWifi();
+                    for (int i=0; i < 3; i++) swiWaitForVBlank();
+                    Wifi_Deinit();
+                }
+                
             }
         }
         
         if (state == STATE_MULTIPLAYER_CLIENT_CONNECTED) {
             if (entering_state) {
                 entering_state = false;
+
+                NF_CreateSprite(1, 1, 1, 10, 220, 160);
             }
+
             NF_WriteText(1, 0, 1, 5, "CONNECTED!!");
             NF_UpdateTextLayers();
+
+            scanKeys();
+            checkReturnButton(STATE_MULTIPLAYER_JOIN);
+
+            if (state != STATE_MULTIPLAYER_CLIENT_CONNECTED) {
+                entering_state = true;
+                // Disable wifi
+                Wifi_IdleMode();
+                Wifi_DisableWifi();
+                for (int i=0; i < 3; i++) swiWaitForVBlank();
+                Wifi_Deinit();
+
+                NF_ClearTextLayer(1, 0);
+                NF_UpdateTextLayers();
+            }
         }
 
 

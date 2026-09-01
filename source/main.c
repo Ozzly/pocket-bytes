@@ -613,30 +613,26 @@ int main(int argc, char **argv)
         if (state == STATE_PLAYING) {
 
             if (entering_state) {
+                entering_state = false;
 
+                // Load selected palettes
                 for (int i = 0; i < current_player_count; i++) {
                     NF_LoadSpritePal(PLAYER_COLOR_PALETTES[player_selected_colors[i]], PAL_SLOT_PLAYER_BASE + i);
                     NF_VramSpritePal(0, PAL_SLOT_PLAYER_BASE + i, PAL_SLOT_PLAYER_BASE + i);
                 }
-
-
-                
-
-
+                // Setup level
                 loadLevel(&LEVELS[current_level], &key);
                 resetLevel(players, &camera_x, &LEVELS[current_level], &key, boxes, buttons, platforms);
 
+                // Setup players
                 for (int i=0; i < current_player_count; i++) {
-                    players[i].sprite_id = i;
-                    players[i].palette_id = i + 1;
+                    players[i].sprite_id = i + SPRITE_BASE_PLAYER;
+                    // players[i].palette_id = i;
                     players[i].sprite_frame = 0;
                     players[i].sprite_frame_debounce = 0;
 
                     NF_CreateSprite(0, SPRITE_BASE_PLAYER + i, GFX_SLOT_PLAYER, PAL_SLOT_PLAYER_BASE + i, LEVELS[current_level].spawn_x[i], LEVELS[current_level].spawn_y[i]);
                 }
-
-
-                entering_state = false;
             }
 
 

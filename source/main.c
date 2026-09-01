@@ -641,8 +641,7 @@ int main(int argc, char **argv)
             u16 keys = keysHeld();
             u16 keys_down = keysDown();
     
-            
-            // Player movement, collision (map), and sprite animation
+            // Player movement, collision map, sprite animation, movement carrying
             for (int i = 0; i < current_player_count; i++) {
                 Player *p = &players[i];
 
@@ -663,6 +662,7 @@ int main(int argc, char **argv)
                 updatePlayerSprite(p);
             }
 
+            // Box collision and carry movement
             for (int i = 0; i < LEVELS[current_level].box_count; i++) {
                 Box *b = &boxes[i];
 
@@ -673,9 +673,6 @@ int main(int argc, char **argv)
                 if (displacement_x != 0) propagateMoveUp(b->object_on_top, b->object_on_top_id, displacement_x, players, boxes);
             }
     
-            // Apply carry from last frame's standing_on
-            // applyBoxCarry(players, prev_x, boxes, prev_box_x);
-            // applyCarry(players, prev_x, boxes, prev_box_x);
             // Reset stacking info before checking player to player collision, freeing players from each other
             resetStackingInfo(players, boxes, platforms); 
             // Player to player collision
@@ -690,22 +687,20 @@ int main(int argc, char **argv)
 
             checkDoor(players, &key, LEVELS);
 
-
             // Jumping after resolving all collisions
             executeJumps(players);
+
             // Player clamping to camera bounds
             playerClampToCamera(players, camera_x);
             // Camera follows players, but lets them walk to opposite ends of the screen 
             camera_x = getCameraPosition(players, camera_x);
             NF_ScrollBg(0, 3, camera_x, 0);
-            // Check spike collision after all movement and other collisions resolved
-            resolvePlayerSpikeCollision(players);
-
+            
             // Track interactions with the key & have the key follow the player
             keyPlayerTracking(players, &key);
 
-            
-
+            // Check spike collision after all movement and other collisions resolved
+            resolvePlayerSpikeCollision(players);
             for (int i = 0; i < current_player_count; i++) {
                 if (players[i].is_dead) {
                     state = STATE_DYING;
@@ -714,7 +709,6 @@ int main(int argc, char **argv)
                     players[i].vel_y = -6.0f; // death bounce
                 }
             }
-
 
 
             if (isLevelComplete(players)) {

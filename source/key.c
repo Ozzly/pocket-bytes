@@ -8,8 +8,9 @@
 void keyPlayerTracking(Player *players, Key *key) {
     for (int i=0; i < current_player_count; i++) {
         Player *p = &players[i];
-        if (overlaps(p->x, p->y, PLAYER_WIDTH, PLAYER_HEIGHT, key->x, key->y, KEY_WIDTH, KEY_HEIGHT) && key->carried_by != p->sprite_id && key->swap_buffer == 0 ) {
-            key->carried_by = p->sprite_id;
+        if (overlaps(p->x, p->y, PLAYER_WIDTH, PLAYER_HEIGHT, key->x, key->y, KEY_WIDTH, KEY_HEIGHT) && key->carried_by != i && key->swap_buffer == 0 ) {
+            // Use index in players array to track who is carrying, makes using later easier
+            key->carried_by = i;
             key->swap_buffer = 20;
         }
     }

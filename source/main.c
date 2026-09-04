@@ -754,7 +754,7 @@ int main(int argc, char **argv)
             } else {
                 updateObjectPosition(key.sprite_id, key.x, key.y, KEY_WIDTH, camera_x); 
             }
-            updateObjectPosition(5, LEVELS[current_level].door_x, LEVELS[current_level].door_y, DOOR_WIDTH, camera_x); // door
+            updateObjectPosition(SPRITE_BASE_DOOR, LEVELS[current_level].door_x, LEVELS[current_level].door_y, DOOR_WIDTH, camera_x); // door
             for (int i = 0; i < current_box_count; i++) {
                 updateObjectPosition(boxes[i].sprite_id, boxes[i].x, boxes[i].y, BOX_WIDTH, camera_x); //box 0
             }

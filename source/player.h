@@ -31,7 +31,7 @@ typedef struct
     GameObject standing_on;
     int standing_on_id;
     GameObject object_on_top;
-    int object_on_top_id;
+    int object_on_top_index;
     bool has_player_on_top;
     bool is_dead;
     bool in_door;

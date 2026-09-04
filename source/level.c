@@ -188,7 +188,7 @@ void resetLevel(Player *players, float *camera_x, const LevelConfig *config, Key
         players[i].standing_on = NOTHING;
         players[i].standing_on_id = -1;
         players[i].object_on_top = NOTHING;
-        players[i].object_on_top_id = -1;
+        players[i].object_on_top_index = -1;
         players[i].has_player_on_top = false;
         players[i].is_dead = false;
         players[i].in_door = false;

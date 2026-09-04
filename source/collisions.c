@@ -8,7 +8,7 @@ void propagateMoveUp(GameObject object_on_top, int object_on_top_id, float displ
         Player *rider = &players[object_on_top_id];
         rider->x += displacement;
         resolvePlayerHorizontalTileCollision(rider, displacement);
-        propagateMoveUp(rider->object_on_top, rider->object_on_top_id, displacement, players, boxes);
+        propagateMoveUp(rider->object_on_top, rider->object_on_top_index, displacement, players, boxes);
     } else if (object_on_top == BOX) {
         Box *above = &boxes[object_on_top_id - 6];
         above->x += displacement;
@@ -79,7 +79,7 @@ void resolvePlayerPlayerCollision(Player *players) {
                         a->standing_on = PLAYER;
                         b->has_player_on_top = true;
                         b->object_on_top = PLAYER;
-                        b->object_on_top_id = a->sprite_id;
+                        b->object_on_top_index = i;
 
                     }
                 } else { // b is inside a, so move b up
@@ -91,7 +91,7 @@ void resolvePlayerPlayerCollision(Player *players) {
                         b->standing_on = PLAYER;
                         a->has_player_on_top = true;
                         a->object_on_top = PLAYER;
-                        a->object_on_top_id = b->sprite_id;
+                        a->object_on_top_index = j;
 
                     }
                 }
@@ -179,7 +179,7 @@ void resolvePlayerBoxCollision(Player *players, Box *boxes) {
                         b->standing_on = PLAYER;
                         b->standing_on_id = a->sprite_id;
                         a->object_on_top = BOX;
-                        a->object_on_top_id = b->sprite_id;
+                        a->object_on_top_index = j;
                     }
                 }
             }

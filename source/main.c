@@ -39,7 +39,7 @@ void resetStackingInfo(Player *players, Box *boxes, Platform *platforms) {
         players[i].standing_on_id = -1;
         players[i].has_player_on_top = false;
         players[i].object_on_top = NOTHING;
-        players[i].object_on_top_id = -1;
+        players[i].object_on_top_index = -1;
     }
 
     for (int i = 0; i < current_box_count; i++) {
@@ -658,7 +658,7 @@ int main(int argc, char **argv)
                 float old_x = p->x;
                 resolvePlayerTileCollision(p); 
                 float displacement_x = p->x - old_x;
-                if (displacement_x != 0) propagateMoveUp(p->object_on_top, p->object_on_top_id, displacement_x, players, boxes);
+                if (displacement_x != 0) propagateMoveUp(p->object_on_top, p->object_on_top_index, displacement_x, players, boxes);
                 updatePlayerSprite(p);
             }
 

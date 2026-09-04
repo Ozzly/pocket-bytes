@@ -153,7 +153,7 @@ void updateDemoPlayers() {
         float old_x = p->x;
         resolvePlayerTileCollision(p);
         float displacement_x = p->x - old_x;
-        if (displacement_x != 0) propagateMoveUp(p->object_on_top, p->object_on_top_id, displacement_x, demo_players, NULL);
+        if (displacement_x != 0) propagateMoveUp(p->object_on_top, p->object_on_top_index, displacement_x, demo_players, NULL);
         if (p->vel_x > 0) NF_HflipSprite(0, p->sprite_id, false);
         else if (p->vel_x < 0) NF_HflipSprite(0, p->sprite_id, true);
         updatePlayerSprite(p);
@@ -170,7 +170,7 @@ void updateDemoPlayers() {
         demo_players[i].standing_on_id = -1;
         demo_players[i].has_player_on_top = false;
         demo_players[i].object_on_top = NOTHING;
-        demo_players[i].object_on_top_id = -1;
+        demo_players[i].object_on_top_index = -1;
     }
 
     resolvePlayerPlayerCollision(demo_players);

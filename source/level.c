@@ -317,7 +317,7 @@ void checkDoor(Player *players, Key *key, const LevelConfig *config) {
             key->door_unlocked = true;
             carrier->in_door = true;
             carrier->jump_buffer = 0;
-            NF_SpriteFrame(0, 5, 1);
+            NF_SpriteFrame(0, SPRITE_BASE_DOOR, 1);
         }
     }
 

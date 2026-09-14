@@ -201,8 +201,6 @@ void resetLevel(Player *players, float *camera_x, const LevelConfig *config, Key
     key->swap_buffer = 0;
     key->door_unlocked = false;
 
-    NF_SpriteFrame(0, 5, 0);
-
     for (int i=0; i < config->box_count; i++) {
         boxes[i].x = config->boxes[i].spawn_x;
         boxes[i].y = config->boxes[i].spawn_y;

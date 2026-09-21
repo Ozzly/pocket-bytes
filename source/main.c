@@ -178,8 +178,6 @@ int main(int argc, char **argv)
     while (1)
     {
 
-        GameState state_at_frame_start = state;
-
         if (state == STATE_TITLE) {
 
             // Setup title screen on 1st load

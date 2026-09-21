@@ -401,7 +401,7 @@ int main(int argc, char **argv)
                 }
 
                 // Return sprite
-                NF_CreateSprite(1, 1, 1, PAL_SLOT_RETURN, 220, 160);
+                NF_CreateSprite(1, SPRITE_BASE_RETURN, GFX_SLOT_RETURN, PAL_SLOT_RETURN, 220, 160);
 
                 entering_state = false;
             }
@@ -435,7 +435,7 @@ int main(int argc, char **argv)
                 entering_state = true;
                 NF_UnloadTiledBg("host-client-select");
                 NF_DeleteTiledBg(1, 3);
-                NF_DeleteSprite(1, 1);
+                NF_DeleteSprite(1, SPRITE_BASE_RETURN);
 
                 if (state == STATE_TITLE) {
                     Wifi_DisableWifi();
@@ -466,7 +466,7 @@ int main(int argc, char **argv)
                 Wifi_BeaconStart("NintendoDS", 0xABCDEF01);
 
                 // Return sprite
-                NF_CreateSprite(1, 1, 1, PAL_SLOT_RETURN, 220, 160);
+                NF_CreateSprite(1, SPRITE_BASE_RETURN, GFX_SLOT_RETURN, PAL_SLOT_RETURN, 220, 160);
             }
 
             NF_ClearTextLayer(1, 0);
@@ -513,7 +513,7 @@ int main(int argc, char **argv)
                 // Unload background
                 NF_UnloadTiledBg("host-list");
                 NF_DeleteTiledBg(1, 3);
-                NF_DeleteSprite(1, 1);
+                NF_DeleteSprite(1, SPRITE_BASE_RETURN);
                 // Clear text
                 NF_ClearTextLayer(1, 0);
                 NF_UpdateTextLayers();
@@ -536,7 +536,10 @@ int main(int argc, char **argv)
                 // Wait for wifi to setup for a few frames
                 for (int i=0; i < 5; i++) swiWaitForVBlank();
 
-                NF_CreateSprite(1, 1, 1, PAL_SLOT_RETURN, 220, 160);
+                NF_CreateSprite(1, SPRITE_BASE_RETURN, GFX_SLOT_RETURN, PAL_SLOT_RETURN, 220, 160);
+
+
+
             }
 
             int num_ap = Wifi_GetNumAP();
@@ -587,7 +590,7 @@ int main(int argc, char **argv)
             if (entering_state) {
                 entering_state = false;
 
-                NF_CreateSprite(1, 1, 1, PAL_SLOT_RETURN, 220, 160);
+                NF_CreateSprite(1, SPRITE_BASE_RETURN, GFX_SLOT_RETURN, PAL_SLOT_RETURN, 220, 160);
             }
 
             NF_WriteText(1, 0, 1, 5, "CONNECTED!!");

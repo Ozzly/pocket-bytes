@@ -10,7 +10,7 @@ void propagateMoveUp(GameObject object_on_top, int object_on_top_id, float displ
         resolvePlayerHorizontalTileCollision(rider, displacement);
         propagateMoveUp(rider->object_on_top, rider->object_on_top_index, displacement, players, boxes);
     } else if (object_on_top == BOX) {
-        Box *above = &boxes[object_on_top_id - 6];
+        Box *above = &boxes[object_on_top_id];
         above->x += displacement;
         resolveBoxHorizontalTileCollision(above, displacement);
         propagateMoveUp(above->object_on_top, above->object_on_top_id, displacement, players, boxes);

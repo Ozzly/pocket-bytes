@@ -32,6 +32,9 @@ static const char *PLAYER_COLOR_PALETTES[TOTAL_PLAYER_COLORS] = {
     "sprite/byte-yellow",
 };
 
+bool entering_state = true;
+
+
 
 void resetStackingInfo(Player *players, Box *boxes, Platform *platforms) {
     for (int i = 0; i < current_player_count; i++)  { 
@@ -77,6 +80,453 @@ void checkReturnButton(GameState transition_to) {
     }
 }
 
+
+void updateTitleState() {
+    typedef enum {
+        SINGLEPLAYER,
+        MULTIPLAYER,
+        OPTIONS,
+    } MenuOption;
+
+    static MenuOption menu_option = SINGLEPLAYER;
+    static touchPosition touch_pos;
+
+    // Setup title screen on 1st load
+    if (entering_state) {
+
+        
+
+        NF_LoadTiledBg("bg/title-top", "title-top", 256, 256);
+        NF_CreateTiledBg(0, 3, "title-top");
+        NF_LoadCollisionBg("collision/title-top-col", 0, 256, 200);
+        current_level_width = 256;
+        NF_LoadTiledBg("bg/select-mode-singleplayer", "mode-singleplayer", 256, 256);
+        NF_LoadTiledBg("bg/select-mode-multiplayer", "mode-multiplayer", 256, 256);
+        NF_LoadTiledBg("bg/select-mode-options", "mode-options", 256, 256);
+        NF_CreateTiledBg(1, 3, "mode-options");
+        NF_CreateTiledBg(1, 2, "mode-multiplayer");
+        NF_CreateTiledBg(1, 1, "mode-singleplayer");
+        NF_HideBg(1, 2);
+        NF_HideBg(1, 3);
+
+        createDemoPlayers();
+        // initDemoKey();
+
+        entering_state = false;
+
+        
+    }
+    updateDemoPlayers();
+    // updateDemoKey();
+
+    scanKeys();
+    u16 keys_down = keysDown();
+    u16 keys_held = keysHeld();
+    bool option_selected = false;
+
+    // Track option change for bg updates
+    MenuOption prev_option = menu_option;
+
+    // Check touch screen input
+    if (keys_held & KEY_TOUCH) {
+        touchRead(&touch_pos);
+
+        if (touch_pos.px > 31 && touch_pos.px < 224) {
+            if (touch_pos.py >= 24 && touch_pos.py <= 58) {
+                menu_option = SINGLEPLAYER;
+                option_selected = true;
+            } else if (touch_pos.py >= 72 && touch_pos.py <= 106) {
+                menu_option = MULTIPLAYER;
+                option_selected = true;
+            } else if (touch_pos.py >= 120 && touch_pos.py <= 154) {
+                menu_option = OPTIONS;
+                option_selected = true;
+            }
+        }
+    }
+
+    // Key inputs
+    if (keys_down & KEY_DOWN) {
+        if (menu_option == SINGLEPLAYER) {
+            menu_option = MULTIPLAYER;
+        } else if (menu_option == MULTIPLAYER) {
+            menu_option = OPTIONS;
+        }
+    } else if (keys_down & KEY_UP) {
+        if (menu_option == OPTIONS) {
+            menu_option = MULTIPLAYER;
+        } else if (menu_option == MULTIPLAYER) {
+            menu_option = SINGLEPLAYER;
+        }
+    } else if (keys_down & KEY_A) {
+        option_selected = true; 
+    }
+
+    // Change selected option through switching bg images
+    if (menu_option != prev_option) {
+        switch (menu_option) {
+            case SINGLEPLAYER:
+                NF_ShowBg(1, 1);
+                NF_HideBg(1, 2);
+                NF_HideBg(1, 3);
+                break;
+            case MULTIPLAYER:
+                NF_ShowBg(1, 2);
+                NF_HideBg(1, 1);
+                NF_HideBg(1, 3);
+                break;
+            case OPTIONS:
+                NF_ShowBg(1, 3);
+                NF_HideBg(1, 1);
+                NF_HideBg(1, 2);
+                break;
+        }
+    }
+
+    // Select option
+    if (option_selected) {
+        entering_state = true;
+        unloadTitleScreen();
+        // for (int i=0; i < 10; i++) swiWaitForVBlank();
+        if (menu_option == SINGLEPLAYER) {
+            current_player_count = 2;
+            state = STATE_SINGLEPLAYER_COLOR_SELECT;
+
+            // Unload bottom background
+            // NF_UnloadTiledBg("mode-singleplayer");
+            // NF_UnloadTiledBg("mode-multiplayer");
+            // NF_UnloadTiledBg("mode-options");
+            // NF_DeleteTiledBg(1, 0);
+            // NF_DeleteTiledBg(1, 1);
+            // NF_DeleteTiledBg(1, 2); 
+
+
+            // NF_UnloadSpritePal(0);
+            // NF_UnloadSpritePal(1);
+            // NF_UnloadSpritePal(2);
+
+
+        } else if (menu_option == MULTIPLAYER) {
+            current_player_count = 2;
+            state = STATE_MULTIPLAYER_JOIN;
+            
+        } else if (menu_option == OPTIONS) {
+        }
+    }
+}
+
+void updateStateColorSelect(int *player_selected_colors) {
+
+    static int color_highlighted = 0;
+    // static int player_selected_colors[MAX_PLAYERS];
+    static int player_selecting_color = 0;
+    static int available_colors[TOTAL_PLAYER_COLORS];
+    static int available_colors_count = TOTAL_PLAYER_COLORS;
+
+    if (entering_state) {
+        entering_state = false;
+        
+        // Load background
+        NF_LoadTiledBg("bg/player-color-select", "player-color-select", 256, 256);
+        NF_CreateTiledBg(1, 3, "player-color-select");
+
+        // Load palettes
+        for (int i=0; i < TOTAL_PLAYER_COLORS; i++) {
+            NF_LoadSpritePal(PLAYER_COLOR_PALETTES[i], i + PAL_SLOT_PLAYER_BASE);
+            NF_VramSpritePal(1, i + PAL_SLOT_PLAYER_BASE, i + PAL_SLOT_PLAYER_BASE);
+        }
+
+        NF_VramSpriteGfx(1, 0, 0, false);
+        for (int i=0; i < TOTAL_PLAYER_COLORS; i++) {
+            NF_CreateSprite(1, SPRITE_BASE_PLAYER + i, GFX_SLOT_PLAYER, i + PAL_SLOT_PLAYER_BASE, 112 + i * 30, 80);
+        }
+
+        color_highlighted = 0;
+
+        for (int i=0; i < TOTAL_PLAYER_COLORS; i++) {
+            available_colors[i] = i;
+        }
+
+
+    }
+
+    // Write string prompting player X to select color
+    char string_select_player_color[32];
+
+    if (player_selecting_color == 0) {
+        snprintf(string_select_player_color, sizeof(string_select_player_color), "Select Player 1's Color");
+    } else if (player_selecting_color == 1) {
+        snprintf(string_select_player_color, sizeof(string_select_player_color), "Select Player 2's Color");
+    }
+    NF_WriteText(1, 0, 4, 5, string_select_player_color);
+    NF_UpdateTextLayers();
+
+    // Detect key movements
+    scanKeys();
+    u16 keys_down = keysDown();
+
+    if (keys_down & KEY_RIGHT) {
+        color_highlighted++;
+        if (color_highlighted >= available_colors_count) color_highlighted = available_colors_count - 1;
+    } else if (keys_down & KEY_LEFT) {
+        color_highlighted--;
+        if (color_highlighted < 0) color_highlighted = 0;
+    } else if ((keys_down & KEY_A) && available_colors_count > 0) {
+        int chosen_color = available_colors[color_highlighted];
+        player_selected_colors[player_selecting_color] = chosen_color;
+        player_selecting_color++;
+
+        NF_MoveSprite(1, SPRITE_BASE_PLAYER + chosen_color, SCREEN_WIDTH, SCREEN_HEIGHT + 10);
+
+        for (int i = color_highlighted; i < available_colors_count - 1; i++) {
+            available_colors[i] = available_colors[i+1];
+        }
+        available_colors_count--;
+
+        if (color_highlighted >= available_colors_count) {
+            color_highlighted = available_colors_count > 0 ? available_colors_count - 1 : 0;
+        }
+    }
+
+
+    // Exit player color selection
+    if (player_selecting_color >= current_player_count) {
+        entering_state = true;
+        state = STATE_PLAYING;
+
+        for (int i=0; i < TOTAL_PLAYER_COLORS; i++) {
+            NF_UnloadSpritePal(i + PAL_SLOT_PLAYER_BASE);
+            NF_DeleteSprite(1, SPRITE_BASE_PLAYER + i);
+        }
+
+        NF_UnloadTiledBg("player-color-select");
+    }
+
+    for (int i=0; i < available_colors_count; i++) {
+        NF_MoveSprite(1, SPRITE_BASE_PLAYER + available_colors[i], 112 + 30 * (i - color_highlighted), 80);
+    }
+}
+
+void updateStateMultiplayerJoin() {
+    if (entering_state) {
+        NF_LoadTiledBg("bg/host-client-select", "host-client-select", 256, 256);
+        NF_CreateTiledBg(1, 3, "host-client-select");
+
+        if (!Wifi_InitDefault(INIT_ONLY | WIFI_LOCAL_ONLY)) {
+            consoleDemoInit();
+            printf("Wifi no worke"); 
+        }
+
+        // Return sprite
+        NF_CreateSprite(1, SPRITE_BASE_RETURN, GFX_SLOT_RETURN, PAL_SLOT_RETURN, 220, 160);
+
+        entering_state = false;
+    }
+    
+
+    // Detect if entering host or client mode
+    scanKeys();
+    u16 keys_held = keysHeld();
+
+    if (keys_held & KEY_TOUCH) {
+        touchPosition touch_pos;
+        touchRead(&touch_pos);
+        if (touch_pos.px > 31 && touch_pos.px < 224) {
+            if (touch_pos.py >= 24 && touch_pos.py <= 84) {
+                // host mode
+                state = STATE_MULTIPLAYER_HOST;
+            } else if (touch_pos.px >= 112 && touch_pos.py <= 172) {
+                // client mode
+                state = STATE_MULTIPLAYER_CLIENT;
+            }
+            
+        }
+
+        
+    }
+
+    // Return
+    checkReturnButton(STATE_TITLE);
+
+    // Cleanup on exit
+    if (state != STATE_MULTIPLAYER_JOIN) {
+        entering_state = true;
+        NF_UnloadTiledBg("host-client-select");
+        NF_DeleteTiledBg(1, 3);
+        NF_DeleteSprite(1, SPRITE_BASE_RETURN);
+
+        if (state == STATE_TITLE) {
+            Wifi_DisableWifi();
+            Wifi_Deinit();
+        }
+        
+    }
+}
+
+void updateStateMultiplayerHost() {
+    if (entering_state) {
+        // Set background
+        NF_LoadTiledBg("bg/host-list", "host-list", 256, 256);
+        NF_CreateTiledBg(1, 3, "host-list");
+
+        entering_state = false;
+        
+        // Start Wifi host mode                
+        Wifi_MultiplayerHostMode(MAX_PLAYERS, sizeof(packet_host_to_client), sizeof(packet_client_to_host));
+
+        // Wait for library to enter host mode
+        while (!Wifi_LibraryModeReady()) swiWaitForVBlank();
+
+        Wifi_SetChannel(6);
+        Wifi_MultiplayerAllowNewClients(true);
+        Wifi_BeaconStart("NintendoDS", 0xABCDEF01);
+
+        // Return sprite
+        NF_CreateSprite(1, SPRITE_BASE_RETURN, GFX_SLOT_RETURN, PAL_SLOT_RETURN, 220, 160);
+    }
+
+    NF_ClearTextLayer(1, 0);
+    NF_UpdateTextLayers();
+
+    int num_clients = Wifi_MultiplayerGetNumClients();
+    u16 players_mask = Wifi_MultiplayerGetClientMask();
+    char player_count_string[16];
+
+    snprintf(player_count_string, sizeof(player_count_string), "Clients: %d", num_clients);
+
+    NF_WriteText(1, 0, 4, 6, player_count_string);
+
+
+    Wifi_ConnectedClient client[4];
+    num_clients = Wifi_MultiplayerGetClients(4, &(client[0]));
+
+    for (int i=0; i < num_clients; i++) {
+        char client_info[32];
+        snprintf(client_info, sizeof(client_info), "AID %d (State %d) %04X", client[i].association_id, client[i].state, client[i].macaddr[2]);
+
+        NF_WriteText(1, 0, 4, i+7, client_info);
+    }
+
+    for (int i=num_clients; i < MAX_PLAYERS; i++) {
+        NF_WriteText(1, 0, 4, i+7, "                  ");
+    }
+
+    NF_UpdateTextLayers();
+
+    // Return
+    scanKeys();
+    checkReturnButton(STATE_MULTIPLAYER_JOIN);
+    
+    // Cleanup on exit
+    if (state != STATE_MULTIPLAYER_HOST) {
+        entering_state = true;
+        
+        // Disable wifi when transitioning
+        Wifi_IdleMode();
+        Wifi_DisableWifi();
+        for (int i=0; i < 3; i++) swiWaitForVBlank();
+        Wifi_Deinit();
+        // Unload background
+        NF_UnloadTiledBg("host-list");
+        NF_DeleteTiledBg(1, 3);
+        NF_DeleteSprite(1, SPRITE_BASE_RETURN);
+        // Clear text
+        NF_ClearTextLayer(1, 0);
+        NF_UpdateTextLayers();
+    }
+}
+
+void updateStateMultiplayerClient() {
+    if (entering_state) {
+        entering_state = false;
+
+        NF_LoadTiledBg("bg/client", "client", 256, 256);
+        NF_CreateTiledBg(1, 3, "client");
+    
+        Wifi_MultiplayerClientMode(sizeof(packet_client_to_host));
+
+        // Wait for library to enter client mode
+        while (!Wifi_LibraryModeReady()) swiWaitForVBlank();
+
+        Wifi_ScanMode();
+        // Wait for wifi to setup for a few frames
+        for (int i=0; i < 5; i++) swiWaitForVBlank();
+
+        NF_CreateSprite(1, SPRITE_BASE_RETURN, GFX_SLOT_RETURN, PAL_SLOT_RETURN, 220, 160);
+
+
+
+    }
+
+    int num_ap = Wifi_GetNumAP();
+    // Autoconnect to the first valid ap
+    if (num_ap > 0) {
+        Wifi_AccessPoint ap;
+        Wifi_GetAPData(0, &ap);
+
+        Wifi_ConnectOpenAP(&ap);
+
+        while (true) {
+            swiWaitForVBlank();
+            int status = Wifi_AssocStatus();
+
+            if (status == ASSOCSTATUS_CANNOTCONNECT) {
+                // fail
+                NF_WriteText(1, 0, 10, 10, "CONNECTION FAILED");
+                NF_UpdateTextLayers();
+                break;
+            }
+            if (status == ASSOCSTATUS_ASSOCIATED) {
+                state = STATE_MULTIPLAYER_CLIENT_CONNECTED;
+                break;
+            }
+        }
+    }
+
+    // Return button
+    scanKeys();
+    checkReturnButton(STATE_MULTIPLAYER_JOIN);
+
+    // Cleanup on exit
+    if (state != STATE_MULTIPLAYER_CLIENT) {
+        entering_state = true;
+
+        if (state == STATE_MULTIPLAYER_JOIN) {
+            // Disable wifi
+            Wifi_IdleMode();
+            Wifi_DisableWifi();
+            for (int i=0; i < 3; i++) swiWaitForVBlank();
+            Wifi_Deinit();
+        }
+        
+    }
+}
+
+void updateStateMultiplayerClientConnected() {
+    if (entering_state) {
+        entering_state = false;
+
+        NF_CreateSprite(1, SPRITE_BASE_RETURN, GFX_SLOT_RETURN, PAL_SLOT_RETURN, 220, 160);
+    }
+
+    NF_WriteText(1, 0, 1, 5, "CONNECTED!!");
+    NF_UpdateTextLayers();
+
+    scanKeys();
+    checkReturnButton(STATE_MULTIPLAYER_JOIN);
+
+    if (state != STATE_MULTIPLAYER_CLIENT_CONNECTED) {
+        entering_state = true;
+        // Disable wifi
+        Wifi_IdleMode();
+        Wifi_DisableWifi();
+        for (int i=0; i < 3; i++) swiWaitForVBlank();
+        Wifi_Deinit();
+
+        NF_ClearTextLayer(1, 0);
+        NF_UpdateTextLayers();
+    }
+}
 
 int main(int argc, char **argv)
 {
@@ -157,457 +607,38 @@ int main(int argc, char **argv)
     // resetLevel(players, &camera_x, &LEVELS[current_level], &key, boxes, buttons, platforms);
 
     int death_timer = PLAYER_DEATH_TIME;
-    bool entering_state = true;
     
-    typedef enum {
-        SINGLEPLAYER,
-        MULTIPLAYER,
-        OPTIONS,
-    } MenuOption;
-
-    MenuOption menu_option = SINGLEPLAYER;
-    touchPosition touch_pos;
+    
 
 
-    int color_highlighted = 0;
+
+    // int color_highlighted = 0;
     int player_selected_colors[MAX_PLAYERS];
-    int player_selecting_color = 0;
-    int available_colors[TOTAL_PLAYER_COLORS];
-    int available_colors_count = TOTAL_PLAYER_COLORS;
+    // int player_selecting_color = 0;
+    // int available_colors[TOTAL_PLAYER_COLORS];
+    // int available_colors_count = TOTAL_PLAYER_COLORS;
 
     while (1)
     {
-
-        if (state == STATE_TITLE) {
-
-            // Setup title screen on 1st load
-            if (entering_state) {
-                NF_LoadTiledBg("bg/title-top", "title-top", 256, 256);
-                NF_CreateTiledBg(0, 3, "title-top");
-                NF_LoadCollisionBg("collision/title-top-col", 0, 256, 200);
-                current_level_width = 256;
-                NF_LoadTiledBg("bg/select-mode-singleplayer", "mode-singleplayer", 256, 256);
-                NF_LoadTiledBg("bg/select-mode-multiplayer", "mode-multiplayer", 256, 256);
-                NF_LoadTiledBg("bg/select-mode-options", "mode-options", 256, 256);
-                NF_CreateTiledBg(1, 3, "mode-options");
-                NF_CreateTiledBg(1, 2, "mode-multiplayer");
-                NF_CreateTiledBg(1, 1, "mode-singleplayer");
-                NF_HideBg(1, 2);
-                NF_HideBg(1, 3);
-
-                createDemoPlayers();
-                // initDemoKey();
-
-                entering_state = false;
-
-                
-            }
-            updateDemoPlayers();
-            // updateDemoKey();
-
-            scanKeys();
-            u16 keys_down = keysDown();
-            u16 keys_held = keysHeld();
-            bool option_selected = false;
-
-            // Track option change for bg updates
-            MenuOption prev_option = menu_option;
-
-            // Check touch screen input
-            if (keys_held & KEY_TOUCH) {
-                touchRead(&touch_pos);
-
-                if (touch_pos.px > 31 && touch_pos.px < 224) {
-                    if (touch_pos.py >= 24 && touch_pos.py <= 58) {
-                        menu_option = SINGLEPLAYER;
-                        option_selected = true;
-                    } else if (touch_pos.py >= 72 && touch_pos.py <= 106) {
-                        menu_option = MULTIPLAYER;
-                        option_selected = true;
-                    } else if (touch_pos.py >= 120 && touch_pos.py <= 154) {
-                        menu_option = OPTIONS;
-                        option_selected = true;
-                    }
-                }
-            }
-
-            // Key inputs
-            if (keys_down & KEY_DOWN) {
-                if (menu_option == SINGLEPLAYER) {
-                    menu_option = MULTIPLAYER;
-                } else if (menu_option == MULTIPLAYER) {
-                    menu_option = OPTIONS;
-                }
-            } else if (keys_down & KEY_UP) {
-                if (menu_option == OPTIONS) {
-                    menu_option = MULTIPLAYER;
-                } else if (menu_option == MULTIPLAYER) {
-                    menu_option = SINGLEPLAYER;
-                }
-            } else if (keys_down & KEY_A) {
-                option_selected = true; 
-            }
-
-            // Change selected option through switching bg images
-            if (menu_option != prev_option) {
-                switch (menu_option) {
-                    case SINGLEPLAYER:
-                        NF_ShowBg(1, 1);
-                        NF_HideBg(1, 2);
-                        NF_HideBg(1, 3);
-                        break;
-                    case MULTIPLAYER:
-                        NF_ShowBg(1, 2);
-                        NF_HideBg(1, 1);
-                        NF_HideBg(1, 3);
-                        break;
-                    case OPTIONS:
-                        NF_ShowBg(1, 3);
-                        NF_HideBg(1, 1);
-                        NF_HideBg(1, 2);
-                        break;
-                }
-            }
-
-            // Select option
-            if (option_selected) {
-                entering_state = true;
-                unloadTitleScreen();
-                // for (int i=0; i < 10; i++) swiWaitForVBlank();
-                if (menu_option == SINGLEPLAYER) {
-                    current_player_count = 2;
-                    state = STATE_SINGLEPLAYER_COLOR_SELECT;
-
-                    // Unload bottom background
-                    // NF_UnloadTiledBg("mode-singleplayer");
-                    // NF_UnloadTiledBg("mode-multiplayer");
-                    // NF_UnloadTiledBg("mode-options");
-                    // NF_DeleteTiledBg(1, 0);
-                    // NF_DeleteTiledBg(1, 1);
-                    // NF_DeleteTiledBg(1, 2); 
-
-
-                    // NF_UnloadSpritePal(0);
-                    // NF_UnloadSpritePal(1);
-                    // NF_UnloadSpritePal(2);
-
-
-                } else if (menu_option == MULTIPLAYER) {
-                    current_player_count = 2;
-                    state = STATE_MULTIPLAYER_JOIN;
-                    
-                } else if (menu_option == OPTIONS) {
-                }
-            }
-        }
-
-        if (state == STATE_SINGLEPLAYER_COLOR_SELECT) {
-            if (entering_state) {
-                entering_state = false;
-                
-                // Load background
-                NF_LoadTiledBg("bg/player-color-select", "player-color-select", 256, 256);
-                NF_CreateTiledBg(1, 3, "player-color-select");
-
-                // Load palettes
-                for (int i=0; i < TOTAL_PLAYER_COLORS; i++) {
-                    NF_LoadSpritePal(PLAYER_COLOR_PALETTES[i], i + PAL_SLOT_PLAYER_BASE);
-                    NF_VramSpritePal(1, i + PAL_SLOT_PLAYER_BASE, i + PAL_SLOT_PLAYER_BASE);
-                }
-
-                NF_VramSpriteGfx(1, 0, 0, false);
-                for (int i=0; i < TOTAL_PLAYER_COLORS; i++) {
-                    NF_CreateSprite(1, SPRITE_BASE_PLAYER + i, GFX_SLOT_PLAYER, i + PAL_SLOT_PLAYER_BASE, 112 + i * 30, 80);
-                }
-
-                color_highlighted = 0;
-
-                for (int i=0; i < TOTAL_PLAYER_COLORS; i++) {
-                    available_colors[i] = i;
-                }
-
-
-            }
-
-            // Write string prompting player X to select color
-            char string_select_player_color[32];
-
-            if (player_selecting_color == 0) {
-                snprintf(string_select_player_color, sizeof(string_select_player_color), "Select Player 1's Color");
-            } else if (player_selecting_color == 1) {
-                snprintf(string_select_player_color, sizeof(string_select_player_color), "Select Player 2's Color");
-            }
-            NF_WriteText(1, 0, 4, 5, string_select_player_color);
-            NF_UpdateTextLayers();
-
-            // Detect key movements
-            scanKeys();
-            u16 keys_down = keysDown();
-
-            if (keys_down & KEY_RIGHT) {
-                color_highlighted++;
-                if (color_highlighted >= available_colors_count) color_highlighted = available_colors_count - 1;
-            } else if (keys_down & KEY_LEFT) {
-                color_highlighted--;
-                if (color_highlighted < 0) color_highlighted = 0;
-            } else if ((keys_down & KEY_A) && available_colors_count > 0) {
-                int chosen_color = available_colors[color_highlighted];
-                player_selected_colors[player_selecting_color] = chosen_color;
-                player_selecting_color++;
-
-                NF_MoveSprite(1, SPRITE_BASE_PLAYER + chosen_color, SCREEN_WIDTH, SCREEN_HEIGHT + 10);
-
-                for (int i = color_highlighted; i < available_colors_count - 1; i++) {
-                    available_colors[i] = available_colors[i+1];
-                }
-                available_colors_count--;
-
-                if (color_highlighted >= available_colors_count) {
-                    color_highlighted = available_colors_count > 0 ? available_colors_count - 1 : 0;
-                }
-            }
-
-
-            // Exit player color selection
-            if (player_selecting_color >= current_player_count) {
-                entering_state = true;
-                state = STATE_PLAYING;
-
-                for (int i=0; i < TOTAL_PLAYER_COLORS; i++) {
-                    NF_UnloadSpritePal(i + PAL_SLOT_PLAYER_BASE);
-                    NF_DeleteSprite(1, SPRITE_BASE_PLAYER + i);
-                }
-
-                NF_UnloadTiledBg("player-color-select");
-            }
-
-            for (int i=0; i < available_colors_count; i++) {
-                NF_MoveSprite(1, SPRITE_BASE_PLAYER + available_colors[i], 112 + 30 * (i - color_highlighted), 80);
-            }
-        }
-
-
-        if (state == STATE_MULTIPLAYER_JOIN) {
-
-            if (entering_state) {
-                NF_LoadTiledBg("bg/host-client-select", "host-client-select", 256, 256);
-                NF_CreateTiledBg(1, 3, "host-client-select");
-
-                if (!Wifi_InitDefault(INIT_ONLY | WIFI_LOCAL_ONLY)) {
-                    consoleDemoInit();
-                    printf("Wifi no worke"); 
-                }
-
-                // Return sprite
-                NF_CreateSprite(1, SPRITE_BASE_RETURN, GFX_SLOT_RETURN, PAL_SLOT_RETURN, 220, 160);
-
-                entering_state = false;
-            }
-            
-
-            // Detect if entering host or client mode
-            scanKeys();
-            u16 keys_held = keysHeld();
-
-            if (keys_held & KEY_TOUCH) {
-                touchRead(&touch_pos);
-                if (touch_pos.px > 31 && touch_pos.px < 224) {
-                    if (touch_pos.py >= 24 && touch_pos.py <= 84) {
-                        // host mode
-                        state = STATE_MULTIPLAYER_HOST;
-                    } else if (touch_pos.px >= 112 && touch_pos.py <= 172) {
-                        // client mode
-                        state = STATE_MULTIPLAYER_CLIENT;
-                    }
-                    
-                }
-
-                
-            }
-
-            // Return
-            checkReturnButton(STATE_TITLE);
-
-            // Cleanup on exit
-            if (state != STATE_MULTIPLAYER_JOIN) {
-                entering_state = true;
-                NF_UnloadTiledBg("host-client-select");
-                NF_DeleteTiledBg(1, 3);
-                NF_DeleteSprite(1, SPRITE_BASE_RETURN);
-
-                if (state == STATE_TITLE) {
-                    Wifi_DisableWifi();
-                    Wifi_Deinit();
-                }
-                
-            }
-
-        }
-
-        if (state == STATE_MULTIPLAYER_HOST) {
-            // host mode active
-            if (entering_state) {
-                // Set background
-                NF_LoadTiledBg("bg/host-list", "host-list", 256, 256);
-                NF_CreateTiledBg(1, 3, "host-list");
-
-                entering_state = false;
-                
-                // Start Wifi host mode                
-                Wifi_MultiplayerHostMode(MAX_PLAYERS, sizeof(packet_host_to_client), sizeof(packet_client_to_host));
-
-                // Wait for library to enter host mode
-                while (!Wifi_LibraryModeReady()) swiWaitForVBlank();
-
-                Wifi_SetChannel(6);
-                Wifi_MultiplayerAllowNewClients(true);
-                Wifi_BeaconStart("NintendoDS", 0xABCDEF01);
-
-                // Return sprite
-                NF_CreateSprite(1, SPRITE_BASE_RETURN, GFX_SLOT_RETURN, PAL_SLOT_RETURN, 220, 160);
-            }
-
-            NF_ClearTextLayer(1, 0);
-            NF_UpdateTextLayers();
-
-            int num_clients = Wifi_MultiplayerGetNumClients();
-            u16 players_mask = Wifi_MultiplayerGetClientMask();
-            char player_count_string[16];
-
-            snprintf(player_count_string, sizeof(player_count_string), "Clients: %d", num_clients);
-
-            NF_WriteText(1, 0, 4, 6, player_count_string);
-
-
-            Wifi_ConnectedClient client[4];
-            num_clients = Wifi_MultiplayerGetClients(4, &(client[0]));
-
-            for (int i=0; i < num_clients; i++) {
-                char client_info[32];
-                snprintf(client_info, sizeof(client_info), "AID %d (State %d) %04X", client[i].association_id, client[i].state, client[i].macaddr[2]);
-    
-                NF_WriteText(1, 0, 4, i+7, client_info);
-            }
-
-            for (int i=num_clients; i < MAX_PLAYERS; i++) {
-                NF_WriteText(1, 0, 4, i+7, "                  ");
-            }
-
-            NF_UpdateTextLayers();
-
-            // Return
-            scanKeys();
-            checkReturnButton(STATE_MULTIPLAYER_JOIN);
-           
-            // Cleanup on exit
-            if (state != STATE_MULTIPLAYER_HOST) {
-                entering_state = true;
-                
-                // Disable wifi when transitioning
-                Wifi_IdleMode();
-                Wifi_DisableWifi();
-                for (int i=0; i < 3; i++) swiWaitForVBlank();
-                Wifi_Deinit();
-                // Unload background
-                NF_UnloadTiledBg("host-list");
-                NF_DeleteTiledBg(1, 3);
-                NF_DeleteSprite(1, SPRITE_BASE_RETURN);
-                // Clear text
-                NF_ClearTextLayer(1, 0);
-                NF_UpdateTextLayers();
-            }
-        }
-
-        if (state == STATE_MULTIPLAYER_CLIENT) {
-            if (entering_state) {
-                entering_state = false;
-
-                NF_LoadTiledBg("bg/client", "client", 256, 256);
-                NF_CreateTiledBg(1, 3, "client");
-            
-                Wifi_MultiplayerClientMode(sizeof(packet_client_to_host));
-
-                // Wait for library to enter client mode
-                while (!Wifi_LibraryModeReady()) swiWaitForVBlank();
-
-                Wifi_ScanMode();
-                // Wait for wifi to setup for a few frames
-                for (int i=0; i < 5; i++) swiWaitForVBlank();
-
-                NF_CreateSprite(1, SPRITE_BASE_RETURN, GFX_SLOT_RETURN, PAL_SLOT_RETURN, 220, 160);
-
-
-
-            }
-
-            int num_ap = Wifi_GetNumAP();
-            // Autoconnect to the first valid ap
-            if (num_ap > 0) {
-                Wifi_AccessPoint ap;
-                Wifi_GetAPData(0, &ap);
-
-                Wifi_ConnectOpenAP(&ap);
-
-                while (true) {
-                    swiWaitForVBlank();
-                    int status = Wifi_AssocStatus();
-
-                    if (status == ASSOCSTATUS_CANNOTCONNECT) {
-                        // fail
-                        NF_WriteText(1, 0, 10, 10, "CONNECTION FAILED");
-                        NF_UpdateTextLayers();
-                        break;
-                    }
-                    if (status == ASSOCSTATUS_ASSOCIATED) {
-                        state = STATE_MULTIPLAYER_CLIENT_CONNECTED;
-                        break;
-                    }
-                }
-            }
-
-            // Return button
-            scanKeys();
-            checkReturnButton(STATE_MULTIPLAYER_JOIN);
-
-            // Cleanup on exit
-            if (state != STATE_MULTIPLAYER_CLIENT) {
-                entering_state = true;
-
-                if (state == STATE_MULTIPLAYER_JOIN) {
-                    // Disable wifi
-                    Wifi_IdleMode();
-                    Wifi_DisableWifi();
-                    for (int i=0; i < 3; i++) swiWaitForVBlank();
-                    Wifi_Deinit();
-                }
-                
-            }
-        }
-        
-        if (state == STATE_MULTIPLAYER_CLIENT_CONNECTED) {
-            if (entering_state) {
-                entering_state = false;
-
-                NF_CreateSprite(1, SPRITE_BASE_RETURN, GFX_SLOT_RETURN, PAL_SLOT_RETURN, 220, 160);
-            }
-
-            NF_WriteText(1, 0, 1, 5, "CONNECTED!!");
-            NF_UpdateTextLayers();
-
-            scanKeys();
-            checkReturnButton(STATE_MULTIPLAYER_JOIN);
-
-            if (state != STATE_MULTIPLAYER_CLIENT_CONNECTED) {
-                entering_state = true;
-                // Disable wifi
-                Wifi_IdleMode();
-                Wifi_DisableWifi();
-                for (int i=0; i < 3; i++) swiWaitForVBlank();
-                Wifi_Deinit();
-
-                NF_ClearTextLayer(1, 0);
-                NF_UpdateTextLayers();
-            }
+        switch (state) {
+            case STATE_TITLE:
+                updateTitleState();
+                break;
+            case STATE_SINGLEPLAYER_COLOR_SELECT:
+                updateStateColorSelect(player_selected_colors);
+                break;
+            case STATE_MULTIPLAYER_JOIN:
+                updateStateMultiplayerJoin();
+                break;
+            case STATE_MULTIPLAYER_HOST:
+                updateStateMultiplayerHost();
+                break;
+            case STATE_MULTIPLAYER_CLIENT:
+                updateStateMultiplayerClient();
+                break;
+            case STATE_MULTIPLAYER_CLIENT_CONNECTED:
+                updateStateMultiplayerClientConnected();
+                break;
         }
 
 
@@ -781,3 +812,5 @@ int main(int argc, char **argv)
     // supports it.
     return 0;
 }
+
+

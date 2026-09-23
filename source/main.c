@@ -709,24 +709,6 @@ int main(int argc, char **argv)
     NF_SetTextColor(1, 0, 1);
 
 
-    // Key key;
-    // Button buttons[MAX_BUTTONS];
-    // Platform platforms[MAX_PLATFORMS];
-
-
-    // int current_level = 0;
-
-    // Player players[MAX_PLAYERS];
-    
-
-    
-
-    // Box boxes[MAX_BOXES];
-
-    // float camera_x = 0;
-    // loadLevel(&LEVELS[current_level], &key);
-    // resetLevel(players, &camera_x, &LEVELS[current_level], &key, boxes, buttons, platforms);
-
     int death_timer = PLAYER_DEATH_TIME;
 
 
@@ -748,14 +730,7 @@ int main(int argc, char **argv)
     game.players[2].key_jump = KEY_B;
 
     
-
-
-
-    // int color_highlighted = 0;
     int player_selected_colors[MAX_PLAYERS];
-    // int player_selecting_color = 0;
-    // int available_colors[TOTAL_PLAYER_COLORS];
-    // int available_colors_count = TOTAL_PLAYER_COLORS;
 
     while (1)
     {
@@ -784,10 +759,6 @@ int main(int argc, char **argv)
         }
 
 
-        if (state == STATE_PLAYING) {
-
-            
-        }
 
 
         if (state == STATE_DYING) {
@@ -813,7 +784,6 @@ int main(int argc, char **argv)
 
         // Update player position on screen based on camera
         // Keep below all player and collision updates
-
         if (state == STATE_PLAYING || state == STATE_DYING) {
             updatePlayerPosition(game.players, game.camera_x);
     
@@ -845,8 +815,7 @@ int main(int argc, char **argv)
         swiWaitForVBlank();
     }
 
-    // If this is reached, the program will return to the loader if the loader
-    // supports it.
+    // If this is reached, the program will return to the loader
     return 0;
 }
 

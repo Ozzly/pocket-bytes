@@ -80,6 +80,16 @@ void checkReturnButton(GameState transition_to) {
     }
 }
 
+typedef struct {
+    Player players[MAX_PLAYERS];
+    Box boxes[MAX_BOXES];
+    Platform platforms[MAX_PLATFORMS];
+    Button buttons[MAX_BUTTONS];
+    Key key;
+    float camera_x;
+    int current_level;
+} GameContext;
+
 
 void updateTitleState() {
     typedef enum {
@@ -528,6 +538,127 @@ void updateStateMultiplayerClientConnected() {
     }
 }
 
+void updateStatePlaying(GameContext *game) {
+    Player *players = game->players;
+    Box *boxes = game->boxes;
+    Platform *platforms = game->platforms;
+    Button *buttons = game->buttons;
+    Key *key = &game->key;
+    int current_level = game->current_level;
+
+    if (entering_state) {
+        entering_state = false;
+
+        // Load selected palettes
+        for (int i = 0; i < current_player_count; i++) {
+            // player_selected_colors[i]
+            NF_LoadSpritePal(PLAYER_COLOR_PALETTES[i], PAL_SLOT_PLAYER_BASE + i);
+            NF_VramSpritePal(0, PAL_SLOT_PLAYER_BASE + i, PAL_SLOT_PLAYER_BASE + i);
+        }
+        // Setup level
+        loadLevel(&LEVELS[current_level], key);
+        resetLevel(players, &game->camera_x, &LEVELS[current_level], key, boxes, buttons, platforms);
+
+        // Setup players
+        for (int i=0; i < current_player_count; i++) {
+            players[i].sprite_id = i + SPRITE_BASE_PLAYER;
+            // players[i].palette_id = i;
+            players[i].sprite_frame = 0;
+            players[i].sprite_frame_debounce = 0;
+
+            NF_CreateSprite(0, SPRITE_BASE_PLAYER + i, GFX_SLOT_PLAYER, PAL_SLOT_PLAYER_BASE + i, LEVELS[current_level].spawn_x[i], LEVELS[current_level].spawn_y[i]);
+        }
+    }
+
+
+    // Read keypad
+    scanKeys();
+    u16 keys = keysHeld();
+    u16 keys_down = keysDown();
+
+    // Player movement, collision map, sprite animation, movement carrying
+    for (int i = 0; i < current_player_count; i++) {
+        Player *p = &players[i];
+
+        // Skip player in door, if they press up, leave the door
+        if (p->in_door) {
+            if (keys_down & p->key_jump) {
+                p->in_door = false;
+            }
+            continue;
+        }
+
+        updatePlayerInput(p, keys, keys_down);
+        updatePlayerPhysics(p, &LEVELS[current_level]);
+        float old_x = p->x;
+        resolvePlayerTileCollision(p); 
+        float displacement_x = p->x - old_x;
+        if (displacement_x != 0) propagateMoveUp(p->object_on_top, p->object_on_top_index, displacement_x, players, boxes);
+        updatePlayerSprite(p);
+    }
+
+    // Box collision and carry movement
+    for (int i = 0; i < LEVELS[current_level].box_count; i++) {
+        Box *b = &boxes[i];
+
+        updateBoxPhysics(b, &LEVELS[current_level]);
+        float old_x = b->x;
+        resolveBoxTileCollision(b);
+        float displacement_x = b->x - old_x;
+        if (displacement_x != 0) propagateMoveUp(b->object_on_top, b->object_on_top_id, displacement_x, players, boxes);
+    }
+
+    // Reset stacking info before checking player to player collision, freeing players from each other
+    resetStackingInfo(players, boxes, platforms); 
+    // Player to player collision
+    resolvePlayerPlayerCollision(players);
+
+    checkPlayerButtonOverlap(buttons, players);
+    updateButtons(buttons, players, platforms);
+
+    resolvePlayerPlatformCollision(players, platforms);
+    updatePlatforms(platforms, players, boxes);
+    resolvePlayerBoxCollision(players, boxes);
+
+    checkDoor(players, key, LEVELS);
+
+    // Jumping after resolving all collisions
+    executeJumps(players);
+
+    // Player clamping to camera bounds
+    playerClampToCamera(players, game->camera_x);
+    // Camera follows players, but lets them walk to opposite ends of the screen 
+    game->camera_x = getCameraPosition(players, game->camera_x);
+    NF_ScrollBg(0, 3, game->camera_x, 0);
+    
+    // Track interactions with the key & have the key follow the player
+    keyPlayerTracking(players, key);
+
+    // Check spike collision after all movement and other collisions resolved
+    resolvePlayerSpikeCollision(players);
+    for (int i = 0; i < current_player_count; i++) {
+        if (players[i].is_dead) {
+            state = STATE_DYING;
+
+            NF_SpriteFrame(0, players[i].sprite_id, 6); // Set to death frame 
+            players[i].vel_y = -6.0f; // death bounce
+        }
+    }
+
+
+    if (isLevelComplete(players)) {
+        unloadLevel();
+
+        game->current_level++;
+        loadLevel(&LEVELS[current_level], key);
+        resetLevel(players, &game->camera_x, &LEVELS[current_level], key, boxes, buttons, platforms);
+    }
+}
+
+
+
+
+
 int main(int argc, char **argv)
 {
     // Screen for NitroFS init
@@ -578,36 +709,44 @@ int main(int argc, char **argv)
     NF_SetTextColor(1, 0, 1);
 
 
-    Key key;
-    Button buttons[MAX_BUTTONS];
-    Platform platforms[MAX_PLATFORMS];
+    // Key key;
+    // Button buttons[MAX_BUTTONS];
+    // Platform platforms[MAX_PLATFORMS];
 
 
-    int current_level = 0;
+    // int current_level = 0;
 
-    Player players[MAX_PLAYERS];
+    // Player players[MAX_PLAYERS];
     
 
-    players[0].key_left = KEY_LEFT;
-    players[0].key_right = KEY_RIGHT; 
-    players[0].key_jump = KEY_UP;
+    
 
-    players[1].key_left = KEY_Y;
-    players[1].key_right = KEY_A;
-    players[1].key_jump = KEY_X;
+    // Box boxes[MAX_BOXES];
 
-    players[2].key_left = KEY_L;
-    players[2].key_right = KEY_R;
-    players[2].key_jump = KEY_B;
-
-    Box boxes[MAX_BOXES];
-
-    float camera_x = 0;
+    // float camera_x = 0;
     // loadLevel(&LEVELS[current_level], &key);
     // resetLevel(players, &camera_x, &LEVELS[current_level], &key, boxes, buttons, platforms);
 
     int death_timer = PLAYER_DEATH_TIME;
-    
+
+
+    GameContext game = {
+        .camera_x = 0,
+        .current_level = 0,
+    };
+
+    game.players[0].key_left = KEY_LEFT;
+    game.players[0].key_right = KEY_RIGHT; 
+    game.players[0].key_jump = KEY_UP;
+
+    game.players[1].key_left = KEY_Y;
+    game.players[1].key_right = KEY_A;
+    game.players[1].key_jump = KEY_X;
+
+    game.players[2].key_left = KEY_L;
+    game.players[2].key_right = KEY_R;
+    game.players[2].key_jump = KEY_B;
+
     
 
 
@@ -639,117 +778,15 @@ int main(int argc, char **argv)
             case STATE_MULTIPLAYER_CLIENT_CONNECTED:
                 updateStateMultiplayerClientConnected();
                 break;
+            case STATE_PLAYING:
+                updateStatePlaying(&game);
+                break;
         }
 
 
         if (state == STATE_PLAYING) {
 
-            if (entering_state) {
-                entering_state = false;
-
-                // Load selected palettes
-                for (int i = 0; i < current_player_count; i++) {
-                    NF_LoadSpritePal(PLAYER_COLOR_PALETTES[player_selected_colors[i]], PAL_SLOT_PLAYER_BASE + i);
-                    NF_VramSpritePal(0, PAL_SLOT_PLAYER_BASE + i, PAL_SLOT_PLAYER_BASE + i);
-                }
-                // Setup level
-                loadLevel(&LEVELS[current_level], &key);
-                resetLevel(players, &camera_x, &LEVELS[current_level], &key, boxes, buttons, platforms);
-
-                // Setup players
-                for (int i=0; i < current_player_count; i++) {
-                    players[i].sprite_id = i + SPRITE_BASE_PLAYER;
-                    // players[i].palette_id = i;
-                    players[i].sprite_frame = 0;
-                    players[i].sprite_frame_debounce = 0;
-
-                    NF_CreateSprite(0, SPRITE_BASE_PLAYER + i, GFX_SLOT_PLAYER, PAL_SLOT_PLAYER_BASE + i, LEVELS[current_level].spawn_x[i], LEVELS[current_level].spawn_y[i]);
-                }
-            }
-
-
-            // Read keypad
-            scanKeys();
-            u16 keys = keysHeld();
-            u16 keys_down = keysDown();
-    
-            // Player movement, collision map, sprite animation, movement carrying
-            for (int i = 0; i < current_player_count; i++) {
-                Player *p = &players[i];
-
-                // Skip player in door, if they press up, leave the door
-                if (p->in_door) {
-                    if (keys_down & p->key_jump) {
-                        p->in_door = false;
-                    }
-                    continue;
-                }
-
-                updatePlayerInput(p, keys, keys_down);
-                updatePlayerPhysics(p, &LEVELS[current_level]);
-                float old_x = p->x;
-                resolvePlayerTileCollision(p); 
-                float displacement_x = p->x - old_x;
-                if (displacement_x != 0) propagateMoveUp(p->object_on_top, p->object_on_top_index, displacement_x, players, boxes);
-                updatePlayerSprite(p);
-            }
-
-            // Box collision and carry movement
-            for (int i = 0; i < LEVELS[current_level].box_count; i++) {
-                Box *b = &boxes[i];
-
-                updateBoxPhysics(b, &LEVELS[current_level]);
-                float old_x = b->x;
-                resolveBoxTileCollision(b);
-                float displacement_x = b->x - old_x;
-                if (displacement_x != 0) propagateMoveUp(b->object_on_top, b->object_on_top_id, displacement_x, players, boxes);
-            }
-    
-            // Reset stacking info before checking player to player collision, freeing players from each other
-            resetStackingInfo(players, boxes, platforms); 
-            // Player to player collision
-            resolvePlayerPlayerCollision(players);
-
-            checkPlayerButtonOverlap(buttons, players);
-            updateButtons(buttons, players, platforms);
-
-            resolvePlayerPlatformCollision(players, platforms);
-            updatePlatforms(platforms, players, boxes);
-            resolvePlayerBoxCollision(players, boxes);
-
-            checkDoor(players, &key, LEVELS);
-
-            // Jumping after resolving all collisions
-            executeJumps(players);
-
-            // Player clamping to camera bounds
-            playerClampToCamera(players, camera_x);
-            // Camera follows players, but lets them walk to opposite ends of the screen 
-            camera_x = getCameraPosition(players, camera_x);
-            NF_ScrollBg(0, 3, camera_x, 0);
             
-            // Track interactions with the key & have the key follow the player
-            keyPlayerTracking(players, &key);
-
-            // Check spike collision after all movement and other collisions resolved
-            resolvePlayerSpikeCollision(players);
-            for (int i = 0; i < current_player_count; i++) {
-                if (players[i].is_dead) {
-                    state = STATE_DYING;
-
-                    NF_SpriteFrame(0, players[i].sprite_id, 6); // Set to death frame 
-                    players[i].vel_y = -6.0f; // death bounce
-                }
-            }
-
-
-            if (isLevelComplete(players)) {
-                unloadLevel();
-
-                current_level++;
-                loadLevel(&LEVELS[current_level], &key);
-                resetLevel(players, &camera_x, &LEVELS[current_level], &key, boxes, buttons, platforms);
-            }
         }
 
 
@@ -758,7 +795,7 @@ int main(int argc, char **argv)
 
             // Apply gravity to dead players until they fall off screen
             for (int i=0; i < current_player_count; i++) {
-                Player *p = &players[i];
+                Player *p = &game.players[i];
                 if (p->is_dead && death_timer < PLAYER_DEATH_TIME-15 && p->y < 192) { 
                     p->vel_y += GRAVITY;
                     p->y += p->vel_y;
@@ -769,7 +806,7 @@ int main(int argc, char **argv)
             if (death_timer <= 0) {
                 state = STATE_PLAYING;
                 death_timer = PLAYER_DEATH_TIME;
-                resetLevel(players, &camera_x, &LEVELS[current_level], &key, boxes, buttons, platforms);
+                resetLevel(game.players, &game.camera_x, &LEVELS[game.current_level], &game.key, game.boxes, game.buttons, game.platforms);
             }
         }
 
@@ -778,23 +815,23 @@ int main(int argc, char **argv)
         // Keep below all player and collision updates
 
         if (state == STATE_PLAYING || state == STATE_DYING) {
-            updatePlayerPosition(players, camera_x);
+            updatePlayerPosition(game.players, game.camera_x);
     
             // Update object positions relative to camera
-            if (key.door_unlocked) { // key
-                NF_MoveSprite(0, key.sprite_id, 0, 192);
+            if (game.key.door_unlocked) { // key
+                NF_MoveSprite(0, game.key.sprite_id, 0, 192);
             } else {
-                updateObjectPosition(key.sprite_id, key.x, key.y, KEY_WIDTH, camera_x); 
+                updateObjectPosition(game.key.sprite_id, game.key.x, game.key.y, KEY_WIDTH, game.camera_x); 
             }
-            updateObjectPosition(SPRITE_BASE_DOOR, LEVELS[current_level].door_x, LEVELS[current_level].door_y, DOOR_WIDTH, camera_x); // door
+            updateObjectPosition(SPRITE_BASE_DOOR, LEVELS[game.current_level].door_x, LEVELS[game.current_level].door_y, DOOR_WIDTH, game.camera_x); // door
             for (int i = 0; i < current_box_count; i++) {
-                updateObjectPosition(boxes[i].sprite_id, boxes[i].x, boxes[i].y, BOX_WIDTH, camera_x); //box 0
+                updateObjectPosition(game.boxes[i].sprite_id, game.boxes[i].x, game.boxes[i].y, BOX_WIDTH, game.camera_x); //box 0
             }
             for (int i=0; i < current_button_count; i++) {
-                updateObjectPosition(buttons[i].sprite_id, buttons[i].x, buttons[i].y, 16, camera_x);
+                updateObjectPosition(game.buttons[i].sprite_id, game.buttons[i].x, game.buttons[i].y, 16, game.camera_x);
             }
             for (int i = 0; i < current_platform_count; i++) {
-                updateObjectPosition(platforms[i].sprite_id, platforms[i].x, platforms[i].y, platforms[i].width, camera_x);
+                updateObjectPosition(game.platforms[i].sprite_id, game.platforms[i].x, game.platforms[i].y, game.platforms[i].width, game.camera_x);
             }
             
     

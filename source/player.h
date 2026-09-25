@@ -23,7 +23,7 @@ typedef struct
     int coyote_frames;
     int jump_buffer;
     int sprite_id;
-    int palette_id;
+    int color_index;
     u8 sprite_frame;
     u8 sprite_frame_debounce;
     u16 key_left, key_right, key_jump;

@@ -225,7 +225,7 @@ void updateTitleState() {
     }
 }
 
-void updateStateColorSelect(int *player_selected_colors) {
+void updateStateColorSelect(GameContext *game) {
 
     static int color_highlighted = 0;
     // static int player_selected_colors[MAX_PLAYERS];
@@ -283,7 +283,8 @@ void updateStateColorSelect(int *player_selected_colors) {
         if (color_highlighted < 0) color_highlighted = 0;
     } else if ((keys_down & KEY_A) && available_colors_count > 0) {
         int chosen_color = available_colors[color_highlighted];
-        player_selected_colors[player_selecting_color] = chosen_color;
+        game->players[player_selecting_color].color_index = chosen_color;
+        // player_selected_colors[player_selecting_color] = chosen_color;
         player_selecting_color++;
 
         NF_MoveSprite(1, SPRITE_BASE_PLAYER + chosen_color, SCREEN_WIDTH, SCREEN_HEIGHT + 10);
@@ -551,8 +552,7 @@ void updateStatePlaying(GameContext *game) {
 
         // Load selected palettes
         for (int i = 0; i < current_player_count; i++) {
-            // player_selected_colors[i]
-            NF_LoadSpritePal(PLAYER_COLOR_PALETTES[i], PAL_SLOT_PLAYER_BASE + i);
+            NF_LoadSpritePal(PLAYER_COLOR_PALETTES[players[i].color_index], PAL_SLOT_PLAYER_BASE + i);
             NF_VramSpritePal(0, PAL_SLOT_PLAYER_BASE + i, PAL_SLOT_PLAYER_BASE + i);
         }
         // Setup level
@@ -562,7 +562,6 @@ void updateStatePlaying(GameContext *game) {
         // Setup players
         for (int i=0; i < current_player_count; i++) {
             players[i].sprite_id = i + SPRITE_BASE_PLAYER;
-            // players[i].palette_id = i;
             players[i].sprite_frame = 0;
             players[i].sprite_frame_debounce = 0;
 
@@ -755,8 +754,6 @@ int main(int argc, char **argv)
     game.players[2].key_jump = KEY_B;
 
     
-    int player_selected_colors[MAX_PLAYERS];
-
     while (1)
     {
         switch (state) {
@@ -764,7 +761,7 @@ int main(int argc, char **argv)
                 updateTitleState();
                 break;
             case STATE_SINGLEPLAYER_COLOR_SELECT:
-                updateStateColorSelect(player_selected_colors);
+                updateStateColorSelect(&game);
                 break;
             case STATE_MULTIPLAYER_JOIN:
                 updateStateMultiplayerJoin();

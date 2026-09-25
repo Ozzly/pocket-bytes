@@ -42,7 +42,7 @@ Player demo_players[DEMO_PLAYER_COUNT] = {
         .vel_x = 0.0f,
         .vel_y = 0.0f,
         .sprite_id = -1,
-        .palette_id = 0,
+        .color_index = 0,
         .on_ground = false,
     },
     {
@@ -51,7 +51,7 @@ Player demo_players[DEMO_PLAYER_COUNT] = {
         .vel_x = 0.0f,
         .vel_y = 0.0f,
         .sprite_id = -1,
-        .palette_id = 1,
+        .color_index = 1,
         .on_ground = false,
     },
     {
@@ -60,7 +60,7 @@ Player demo_players[DEMO_PLAYER_COUNT] = {
         .vel_x = 0.0f,
         .vel_y = 0.0f,
         .sprite_id = -1,
-        .palette_id = 2,
+        .color_index = 2,
         .on_ground = false,
     }
 };
@@ -86,7 +86,7 @@ void createDemoPlayers() {
         demo_players[i].sprite_id = SPRITE_BASE_DEMO + i;
         demo_players[i].sprite_frame = 0;
         demo_players[i].sprite_frame_debounce = 0;
-        NF_CreateSprite(0, SPRITE_BASE_DEMO + i, GFX_SLOT_PLAYER, demo_players[i].palette_id, (int)demo_players[i].x, (int)demo_players[i].y);
+        NF_CreateSprite(0, SPRITE_BASE_DEMO + i, GFX_SLOT_PLAYER, i, (int)demo_players[i].x, (int)demo_players[i].y);
 
     }
 }

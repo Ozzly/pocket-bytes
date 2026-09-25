@@ -655,8 +655,33 @@ void updateStatePlaying(GameContext *game) {
     }
 }
 
+void updateStateDying(GameContext *game) {
+    Player *players = game->players;
+    Box *boxes = game->boxes;
+    Platform *platforms = game->platforms;
+    Button *buttons = game->buttons;
+    Key *key = &game->key;
+    int current_level = game->current_level;
 
+    static int death_timer = PLAYER_DEATH_TIME;
+    death_timer--;
 
+    // Apply gravity to dead players until they fall off screen
+    for (int i=0; i < current_player_count; i++) {
+        Player *p = &players[i];
+        if (p->is_dead && death_timer < PLAYER_DEATH_TIME-15 && p->y < 192) { 
+            p->vel_y += GRAVITY;
+            p->y += p->vel_y;
+        }
+    }
+
+    // Rest level after death animation
+    if (death_timer <= 0) {
+        state = STATE_PLAYING;
+        death_timer = PLAYER_DEATH_TIME;
+        resetLevel(players, &game->camera_x, &LEVELS[current_level], key, boxes, buttons, platforms);
+    }
+}
 
 
 int main(int argc, char **argv)
@@ -709,7 +734,7 @@ int main(int argc, char **argv)
     NF_SetTextColor(1, 0, 1);
 
 
-    int death_timer = PLAYER_DEATH_TIME;
+    // int death_timer = PLAYER_DEATH_TIME;
 
 
     GameContext game = {
@@ -756,29 +781,9 @@ int main(int argc, char **argv)
             case STATE_PLAYING:
                 updateStatePlaying(&game);
                 break;
-        }
-
-
-
-
-        if (state == STATE_DYING) {
-            death_timer--;
-
-            // Apply gravity to dead players until they fall off screen
-            for (int i=0; i < current_player_count; i++) {
-                Player *p = &game.players[i];
-                if (p->is_dead && death_timer < PLAYER_DEATH_TIME-15 && p->y < 192) { 
-                    p->vel_y += GRAVITY;
-                    p->y += p->vel_y;
-                }
-            }
-
-            // Rest level after death animation
-            if (death_timer <= 0) {
-                state = STATE_PLAYING;
-                death_timer = PLAYER_DEATH_TIME;
-                resetLevel(game.players, &game.camera_x, &LEVELS[game.current_level], &game.key, game.boxes, game.buttons, game.platforms);
-            }
+            case STATE_DYING:
+                updateStateDying(&game);
+                break;
         }
 
 
